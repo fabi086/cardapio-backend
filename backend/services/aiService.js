@@ -212,9 +212,75 @@ class AIService {
                 } else {
                     if (currentTime >= startTime && currentTime <= endTime) return { isOpen: true };
                 }
+            }
+            return { isOpen: false };
+        }
+
+        return { isOpen: true };
+    }
+
+    async transcribeAudio(base64Audio) {
+        const fs = require('fs');
+        const path = require('path');
+        const os = require('os');
+
+        try {
+            console.log('Transcribing audio...');
+            const buffer = Buffer.from(base64Audio, 'base64');
+            const tempFilePath = path.join(os.tmpdir(), `audio_${Date.now()}.mp3`);
+
+            fs.writeFileSync(tempFilePath, buffer);
+
+            const transcription = await this.openai.audio.transcriptions.create({
+                file: fs.createReadStream(tempFilePath),
                 model: "whisper-1",
             });
 
+            console.log('Transcription:', transcription.text);
+
+            // Cleanup
+            fs.unlinkSync(tempFilePath);
+
+            return transcription.text;
+        } catch (error) {
+            console.error('Error transcribing audio:', error);
+            return null;
+        }
+    }
+
+    async processMessage(messageData) {
+        console.log('--- AI Service: Processing Message ---');
+
+        await this.loadSettings();
+        if (!this.settings || !this.settings.is_active || !this.openai) return;
+
+        const { remoteJid, pushName, conversation, audioMessage, base64 } = messageData;
+        let userMessage = conversation || messageData.text?.message;
+        const userPhone = remoteJid.replace('@s.whatsapp.net', '');
+
+        // Handle Audio - TEMPORARILY DISABLED
+        /*
+        if (audioMessage) {
+            console.log('Audio message detected');
+            if (base64) {
+                userMessage = await this.transcribeAudio(base64);
+                if (!userMessage) {
+                    await this.sendMessage(remoteJid, "Desculpe, não consegui ouvir seu áudio. Pode escrever?");
+                    return;
+                }
+                await this.sendMessage(remoteJid, `🎤 *Entendi:* "${userMessage}"`);
+            } else {
+                console.log('❌ No base64 found for audio message.');
+                await this.sendMessage(remoteJid, "⚠️ *Configuração Necessária*\n\nRecebi seu áudio, mas ele veio vazio.\n\nPor favor, na **Evolution API**, vá em **Webhook** e ative a opção **Download Media** (ou Include Base64).");
+                return;
+            }
+        }
+        */
+
+        if (!userMessage) return;
+
+        try {
+            // 1. Save User Message
             await this.saveMessage(userPhone, 'user', userMessage);
 
             // 2. Check Opening Hours
