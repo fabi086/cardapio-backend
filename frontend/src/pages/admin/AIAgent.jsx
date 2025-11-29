@@ -65,12 +65,15 @@ const AIAgent = () => {
                 body: JSON.stringify(settings)
             });
 
-            if (!response.ok) throw new Error('Failed to save');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.details || errorData.error || 'Failed to save');
+            }
 
             alert('Configurações salvas com sucesso!');
         } catch (error) {
             console.error('Error saving settings:', error);
-            alert('Erro ao salvar configurações.');
+            alert(`Erro ao salvar configurações: ${error.message}`);
         } finally {
             setSaving(false);
         }
