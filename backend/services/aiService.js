@@ -448,54 +448,39 @@ checkOpeningHours() {
                 });
             }
 
-            const secondResponse = await this.openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: messages
-            });
-
-            const finalContent = secondResponse.choices[0].message.content;
-            await this.saveMessage(userPhone, 'assistant', finalContent);
-            await this.sendMessage(remoteJid, finalContent);
-
-            await axios.post(
-                `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`,
-                {
-                    number: remoteJid.replace('@s.whatsapp.net', ''),
-                    text: text,
-                    options: {
-                        delay: 1200,
-                        presence: 'composing',
-                        linkPreview: false
-                    }
-                },
-                {
-                    headers: {
-                        'apikey': this.settings.evolution_api_key,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-        } catch (error) {
-            console.error('Error sending WhatsApp message:', error.response?.data || error.message);
+            delay: 1200,
+                presence: 'composing',
+                    linkPreview: false
         }
+    },
+    {
+        headers: {
+            'apikey': this.settings.evolution_api_key,
+                'Content-Type': 'application/json'
+        }
+    }
+            );
+} catch (error) {
+    console.error('Error sending WhatsApp message:', error.response?.data || error.message);
+}
     }
 
     // Notification Helper
     async sendNotification(phone, status, orderId) {
-        await this.loadSettings();
-        if (!this.settings) return;
+    await this.loadSettings();
+    if (!this.settings) return;
 
-        let message = `🔔 *Atualização do Pedido #${orderId}*\n\nSeu pedido está: *${status}*`;
+    let message = `🔔 *Atualização do Pedido #${orderId}*\n\nSeu pedido está: *${status}*`;
 
-        if (status === 'Saiu para entrega') {
-            message += '\n\n🛵 Nosso entregador já está a caminho!';
-        } else if (status === 'Entregue') {
-            message += '\n\n😋 Bom apetite! Esperamos que goste.';
-        }
-
-        const remoteJid = `${phone}@s.whatsapp.net`;
-        await this.sendMessage(remoteJid, message);
+    if (status === 'Saiu para entrega') {
+        message += '\n\n🛵 Nosso entregador já está a caminho!';
+    } else if (status === 'Entregue') {
+        message += '\n\n😋 Bom apetite! Esperamos que goste.';
     }
+
+    const remoteJid = `${phone}@s.whatsapp.net`;
+    await this.sendMessage(remoteJid, message);
+}
 }
 
 module.exports = new AIService();
