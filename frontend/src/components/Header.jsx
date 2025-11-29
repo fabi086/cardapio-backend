@@ -142,9 +142,7 @@ const Header = ({ searchTerm, setSearchTerm }) => {
                                 <Package size={16} />
                                 <span>Acompanhar Pedido</span>
                             </button>
-                            <button className="text-italian-white/90 hover:text-white transition-colors text-sm font-medium">
-                                Fazer Login
-                            </button>
+
                             <button
                                 onClick={() => setIsCartOpen(true)}
                                 className="bg-italian-green hover:bg-green-700 text-white px-6 py-2 rounded-full text-sm font-bold transition-colors shadow-md border-2 border-italian-white/20 flex items-center gap-2"

@@ -5,6 +5,11 @@ import { Link } from 'react-router-dom';
 
 const Products = () => {
     const [selectedProduct, setSelectedProduct] = useState(null);
+    const [products, setProducts] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [expandedCategories, setExpandedCategories] = useState({});
 
     useEffect(() => {
         fetchData();

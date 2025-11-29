@@ -73,7 +73,7 @@ const OrderTrackingModal = ({ isOpen, onClose }) => {
                 className="absolute inset-0 bg-black/20 backdrop-blur-[1px]"
             />
 
-            <div className="relative w-full max-w-sm bg-white dark:bg-stone-900 rounded-2xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 animate-in fade-in slide-in-from-top-4">
+            <div className="relative w-full max-w-sm bg-white dark:bg-stone-900 rounded-2xl shadow-2xl overflow-hidden border border-stone-200 dark:border-stone-800 animate-in fade-in">
                 <div className="p-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-stone-900/50">
                     <h2 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
                         <Package size={20} className="text-italian-red" />
