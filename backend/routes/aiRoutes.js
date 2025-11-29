@@ -20,6 +20,8 @@ router.post('/webhook', async (req, res) => {
                 remoteJid: data.key.remoteJid,
                 pushName: data.pushName,
                 conversation: data.message?.conversation || data.message?.extendedTextMessage?.text,
+                audioMessage: data.message?.audioMessage,
+                base64: data.base64 || data.message?.audioMessage?.base64, // Try to find base64
                 messageType: data.messageType
             });
         }
