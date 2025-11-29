@@ -23,7 +23,8 @@ const AIAgent = () => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-            const response = await fetch('http://localhost:3001/api/ai/config', {
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            const response = await fetch(`${API_URL}/api/ai/config`, {
                 signal: controller.signal
             });
             clearTimeout(timeoutId);
@@ -55,7 +56,8 @@ const AIAgent = () => {
         setSaving(true);
         try {
             // Save via backend endpoint to ensure consistency
-            const response = await fetch('http://localhost:3001/api/ai/config', {
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            const response = await fetch(`${API_URL}/api/ai/config`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
