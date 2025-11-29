@@ -343,13 +343,11 @@ class AIService {
                 `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`,
                 {
                     number: remoteJid.replace('@s.whatsapp.net', ''),
+                    text: text,
                     options: {
                         delay: 1200,
                         presence: 'composing',
                         linkPreview: false
-                    },
-                    textMessage: {
-                        text: text
                     }
                 },
                 {
