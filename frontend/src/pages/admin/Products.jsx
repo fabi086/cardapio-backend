@@ -4,11 +4,7 @@ import { Plus, Pencil, Trash2, Search, ChevronDown, ChevronRight } from 'lucide-
 import { Link } from 'react-router-dom';
 
 const Products = () => {
-    const [products, setProducts] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [expandedCategories, setExpandedCategories] = useState({});
+    const [selectedProduct, setSelectedProduct] = useState(null);
 
     useEffect(() => {
         fetchData();
@@ -54,6 +50,7 @@ const Products = () => {
             const { error } = await supabase.from('products').delete().eq('id', id);
             if (error) throw error;
             setProducts(products.filter(p => p.id !== id));
+            if (selectedProduct?.id === id) setSelectedProduct(null);
         } catch (error) {
             console.error('Error deleting product:', error);
             alert('Erro ao excluir produto');
@@ -108,7 +105,7 @@ const Products = () => {
                     className="bg-italian-green hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors"
                 >
                     <Plus size={20} />
-                    Novo Produto
+                    <span className="hidden md:inline">Novo Produto</span>
                 </Link>
             </div>
 
@@ -149,8 +146,8 @@ const Products = () => {
                                     <table className="w-full text-left">
                                         <thead className="bg-white dark:bg-stone-900 text-stone-500 dark:text-stone-400 font-bold text-xs uppercase border-b border-stone-100 dark:border-stone-800">
                                             <tr>
-                                                <th className="px-6 py-3 w-20">Ordem</th>
-                                                <th className="px-6 py-3">Imagem</th>
+                                                <th className="px-6 py-3 w-20 hidden md:table-cell">Ordem</th>
+                                                <th className="px-6 py-3 hidden md:table-cell">Imagem</th>
                                                 <th className="px-6 py-3">Nome</th>
                                                 <th className="px-6 py-3">Preço</th>
                                                 <th className="px-6 py-3 text-right">Ações</th>
@@ -158,16 +155,21 @@ const Products = () => {
                                         </thead>
                                         <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                                             {group.products.map((product) => (
-                                                <tr key={product.id} className="hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors">
-                                                    <td className="px-6 py-3">
+                                                <tr
+                                                    key={product.id}
+                                                    className="hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors cursor-pointer md:cursor-default"
+                                                    onClick={() => window.innerWidth < 768 && setSelectedProduct(product)}
+                                                >
+                                                    <td className="px-6 py-3 hidden md:table-cell">
                                                         <input
                                                             type="number"
                                                             value={product.order || 0}
                                                             onChange={(e) => handleOrderChange(product.id, e.target.value)}
                                                             className="w-16 p-1 rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-center text-sm"
+                                                            onClick={(e) => e.stopPropagation()}
                                                         />
                                                     </td>
-                                                    <td className="px-6 py-3">
+                                                    <td className="px-6 py-3 hidden md:table-cell">
                                                         <div className="w-10 h-10 rounded-lg overflow-hidden bg-stone-200">
                                                             <img
                                                                 src={product.image_url}
@@ -187,11 +189,15 @@ const Products = () => {
                                                             <Link
                                                                 to={`/admin/products/${product.id}`}
                                                                 className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                                                onClick={(e) => e.stopPropagation()}
                                                             >
                                                                 <Pencil size={16} />
                                                             </Link>
                                                             <button
-                                                                onClick={() => handleDelete(product.id)}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDelete(product.id);
+                                                                }}
                                                                 className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                                                             >
                                                                 <Trash2 size={16} />
@@ -215,6 +221,49 @@ const Products = () => {
                     ))}
                 </div>
             </div>
+
+            {/* Product Details Modal (Mobile) */}
+            {selectedProduct && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedProduct(null)}>
+                    <div className="bg-white dark:bg-stone-900 rounded-xl shadow-xl max-w-md w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                        <div className="relative h-48 bg-stone-200">
+                            <img
+                                src={selectedProduct.image_url}
+                                alt={selectedProduct.name}
+                                className="w-full h-full object-cover"
+                            />
+                            <button
+                                onClick={() => setSelectedProduct(null)}
+                                className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full hover:bg-black/70"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <div className="flex justify-between items-start mb-2">
+                                <h2 className="text-xl font-bold text-stone-800 dark:text-stone-100">{selectedProduct.name}</h2>
+                                <span className="font-bold text-italian-green text-lg">R$ {selectedProduct.price.toFixed(2)}</span>
+                            </div>
+                            <p className="text-stone-500 text-sm mb-4">{selectedProduct.description || 'Sem descrição.'}</p>
+
+                            <div className="flex gap-2 mt-6">
+                                <Link
+                                    to={`/admin/products/${selectedProduct.id}`}
+                                    className="flex-1 bg-blue-600 text-white py-2 rounded-lg font-bold text-center hover:bg-blue-700 transition-colors"
+                                >
+                                    Editar
+                                </Link>
+                                <button
+                                    onClick={() => handleDelete(selectedProduct.id)}
+                                    className="flex-1 bg-red-100 text-red-700 py-2 rounded-lg font-bold hover:bg-red-200 transition-colors"
+                                >
+                                    Excluir
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

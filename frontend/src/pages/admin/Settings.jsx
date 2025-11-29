@@ -156,6 +156,23 @@ const Settings = () => {
         }
     };
 
+    const handleImageRemove = async (field) => {
+        if (!window.confirm('Tem certeza que deseja remover esta imagem?')) return;
+
+        try {
+            setSaving(true);
+            // Optional: Delete from storage if you want to clean up
+            // const path = settings[field].split('/').pop();
+            // await supabase.storage.from('menu-images').remove([`settings/${path}`]);
+
+            setSettings(prev => ({ ...prev, [field]: '' }));
+        } catch (error) {
+            console.error('Error removing image:', error);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const handleHoursChange = (day, field, value) => {
         setSettings(prev => ({
             ...prev,
@@ -231,7 +248,7 @@ const Settings = () => {
             }
 
             fetchZones();
-            alert('ConfiguraÃ§Ãµes salvas com sucesso!');
+            alert('Configurações salvas com sucesso!');
         } catch (error) {
             console.error('Error saving:', error);
             alert('Erro ao salvar: ' + error.message);
@@ -241,8 +258,8 @@ const Settings = () => {
     };
 
     const days = {
-        monday: 'Segunda', tuesday: 'TerÃ§a', wednesday: 'Quarta', thursday: 'Quinta',
-        friday: 'Sexta', saturday: 'SÃ¡bado', sunday: 'Domingo'
+        monday: 'Segunda', tuesday: 'Terça', wednesday: 'Quarta', thursday: 'Quinta',
+        friday: 'Sexta', saturday: 'Sábado', sunday: 'Domingo'
     };
 
     const fonts = [
@@ -256,10 +273,12 @@ const Settings = () => {
 
     if (loading) return <div className="p-8">Carregando...</div>;
 
+    const webhookUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/ai/webhook`;
+
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-display text-stone-800 dark:text-stone-100">ConfiguraÃ§Ãµes</h1>
+                <h1 className="text-2xl font-display text-stone-800 dark:text-stone-100">Configurações</h1>
                 <button
                     onClick={handleSubmit}
                     disabled={saving}
@@ -276,7 +295,7 @@ const Settings = () => {
                     <TabButton id="general" label="Geral" icon={Building2} activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="appearance" label="Identidade Visual" icon={Palette} activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="social" label="Redes Sociais" icon={Share2} activeTab={activeTab} setActiveTab={setActiveTab} />
-                    <TabButton id="hours" label="HorÃ¡rios" icon={Clock} activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton id="hours" label="Horários" icon={Clock} activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="delivery" label="Entregas" icon={Truck} activeTab={activeTab} setActiveTab={setActiveTab} />
                 </div>
 
@@ -286,12 +305,12 @@ const Settings = () => {
                     {/* GENERAL TAB */}
                     {activeTab === 'general' && (
                         <div className="space-y-6 animate-fadeIn">
-                            <h2 className="text-lg font-bold border-b border-stone-200 dark:border-stone-700 pb-2 mb-4 flex items-center gap-2 text-stone-700 dark:text-stone-200"><Building2 size={18} /> InformaÃ§Ãµes da Loja</h2>
+                            <h2 className="text-lg font-bold border-b border-stone-200 dark:border-stone-700 pb-2 mb-4 flex items-center gap-2 text-stone-700 dark:text-stone-200"><Building2 size={18} /> Informações da Loja</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <InputGroup label="Nome da Loja" name="restaurant_name" value={settings.restaurant_name} onChange={handleChange} placeholder="Ex: AkiraMix Pizzaria" />
                                 <InputGroup label="CNPJ" name="cnpj" value={settings.cnpj} onChange={handleChange} placeholder="00.000.000/0000-00" />
                                 <InputGroup label="WhatsApp" name="whatsapp" value={settings.whatsapp} onChange={handleChange} placeholder="5511999999999" />
-                                <InputGroup label="EndereÃ§o Completo" name="address" value={settings.address} onChange={handleChange} placeholder="Rua, NÃºmero, Bairro..." colSpan={2} />
+                                <InputGroup label="Endereço Completo" name="address" value={settings.address} onChange={handleChange} placeholder="Rua, Número, Bairro..." colSpan={2} />
 
                                 {/* Dynamic Phones */}
                                 <div className="col-span-1 md:col-span-2 lg:col-span-3">
@@ -311,6 +330,28 @@ const Settings = () => {
                                         ))}
                                         <button onClick={addPhone} className="text-xs flex items-center gap-1 text-italian-red font-bold hover:underline"><Plus size={14} /> Adicionar Telefone</button>
                                     </div>
+                                </div>
+
+                                {/* Webhook URL Display */}
+                                <div className="col-span-1 md:col-span-2 lg:col-span-3 mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                                    <label className="block text-xs font-bold mb-2 text-blue-800 dark:text-blue-300 uppercase tracking-wider">Webhook para Agente IA</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={webhookUrl}
+                                            className="flex-1 p-2 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 text-sm font-mono"
+                                        />
+                                        <button
+                                            onClick={() => navigator.clipboard.writeText(webhookUrl)}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs font-bold transition-colors"
+                                        >
+                                            Copiar
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1">
+                                        Use este link na configuração da sua Evolution API ou serviço de IA.
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -388,15 +429,15 @@ const Settings = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 mb-1">Cor PrimÃ¡ria</label>
+                                    <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 mb-1">Cor Primária</label>
                                     <div className="flex gap-1"><input type="color" name="primary_color" value={settings.primary_color} onChange={handleChange} className="h-8 w-8 rounded cursor-pointer border-0" /><input type="text" name="primary_color" value={settings.primary_color} onChange={handleChange} className="w-full p-1 text-xs border rounded dark:bg-stone-800 dark:border-stone-600 dark:text-white" /></div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 mb-1">Cor SecundÃ¡ria</label>
+                                    <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 mb-1">Cor Secundária</label>
                                     <div className="flex gap-1"><input type="color" name="secondary_color" value={settings.secondary_color} onChange={handleChange} className="h-8 w-8 rounded cursor-pointer border-0" /><input type="text" name="secondary_color" value={settings.secondary_color} onChange={handleChange} className="w-full p-1 text-xs border rounded dark:bg-stone-800 dark:border-stone-600 dark:text-white" /></div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 mb-1">Cor BotÃµes</label>
+                                    <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 mb-1">Cor Botões</label>
                                     <div className="flex gap-1"><input type="color" name="button_color" value={settings.button_color} onChange={handleChange} className="h-8 w-8 rounded cursor-pointer border-0" /><input type="text" name="button_color" value={settings.button_color} onChange={handleChange} className="w-full p-1 text-xs border rounded dark:bg-stone-800 dark:border-stone-600 dark:text-white" /></div>
                                 </div>
                                 <div>
@@ -415,7 +456,7 @@ const Settings = () => {
                                 <InputGroup label="Instagram" name="social_instagram" value={settings.social_instagram} onChange={handleChange} placeholder="URL" />
                                 <InputGroup label="Facebook" name="social_facebook" value={settings.social_facebook} onChange={handleChange} placeholder="URL" />
                                 <InputGroup label="YouTube" name="social_youtube" value={settings.social_youtube} onChange={handleChange} placeholder="URL" />
-                                <InputGroup label="Google Meu NegÃ³cio" name="social_google" value={settings.social_google} onChange={handleChange} placeholder="URL" />
+                                <InputGroup label="Google Meu Negócio" name="social_google" value={settings.social_google} onChange={handleChange} placeholder="URL" />
                             </div>
                         </div>
                     )}
@@ -423,12 +464,12 @@ const Settings = () => {
                     {/* HOURS TAB */}
                     {activeTab === 'hours' && (
                         <div className="space-y-6 animate-fadeIn">
-                            <h2 className="text-lg font-bold border-b border-stone-200 dark:border-stone-700 pb-2 mb-4 flex items-center gap-2 text-stone-700 dark:text-stone-200"><Clock size={18} /> HorÃ¡rios de Funcionamento</h2>
+                            <h2 className="text-lg font-bold border-b border-stone-200 dark:border-stone-700 pb-2 mb-4 flex items-center gap-2 text-stone-700 dark:text-stone-200"><Clock size={18} /> Horários de Funcionamento</h2>
 
-                            <InputGroup label="Texto Simples (RodapÃ©)" name="simple_hours_text" value={settings.simple_hours_text} onChange={handleChange} placeholder="Ex: Seg a Sex das 18h Ã s 23h" />
+                            <InputGroup label="Texto Simples (Rodapé)" name="simple_hours_text" value={settings.simple_hours_text} onChange={handleChange} placeholder="Ex: Seg a Sex das 18h às 23h" />
 
                             <div className="bg-transparent dark:bg-stone-800/20 p-4 rounded-lg border border-stone-200 dark:border-stone-700">
-                                <h3 className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase mb-3">ConfiguraÃ§Ã£o AutomÃ¡tica</h3>
+                                <h3 className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase mb-3">Configuração Automática</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                     {Object.entries(days).map(([key, label]) => (
                                         <div key={key} className="flex items-center justify-between p-2 bg-transparent dark:bg-stone-800/50 rounded border border-stone-200 dark:border-stone-700">
@@ -487,11 +528,11 @@ const Settings = () => {
                                         </div>
                                         <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
                                             <div>
-                                                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-1">CEPs ExcluÃ­dos (Separar por vÃ­rgula)</label>
+                                                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-1">CEPs Excluídos (Separar por vírgula)</label>
                                                 <input type="text" value={zone.excluded_ceps || ''} onChange={(e) => handleZoneChange(index, 'excluded_ceps', e.target.value)} className="w-full p-1.5 text-xs border rounded bg-transparent dark:text-white dark:border-stone-600" placeholder="Ex: 00000-001, 00000-002" />
                                             </div>
                                             <div>
-                                                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-1">Bairros (Opcional - Apenas ReferÃªncia)</label>
+                                                <label className="block text-[10px] font-bold text-stone-400 uppercase mb-1">Bairros (Opcional - Apenas Referência)</label>
                                                 <input type="text" value={zone.neighborhoods || ''} onChange={(e) => handleZoneChange(index, 'neighborhoods', e.target.value)} className="w-full p-1.5 text-xs border rounded bg-transparent dark:text-white dark:border-stone-600" placeholder="Centro, Jardim..." />
                                             </div>
                                         </div>

@@ -152,9 +152,9 @@ const Customers = () => {
                             <tr>
                                 <th className="px-6 py-4">Cliente</th>
                                 <th className="px-6 py-4">Contato</th>
-                                <th className="px-6 py-4">Endereço</th>
+                                <th className="px-6 py-4 hidden md:table-cell">Endereço</th>
                                 <th className="px-6 py-4 text-center">Pedidos</th>
-                                <th className="px-6 py-4">Cadastro</th>
+                                <th className="px-6 py-4 hidden lg:table-cell">Cadastro</th>
                                 <th className="px-6 py-4"></th>
                             </tr>
                         </thead>
@@ -165,10 +165,10 @@ const Customers = () => {
                                 <tr><td colSpan="6" className="p-8 text-center text-stone-500">Nenhum cliente encontrado.</td></tr>
                             ) : (
                                 filteredCustomers.map((customer) => (
-                                    <tr key={customer.id} className="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
+                                    <tr key={customer.id} className="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors cursor-pointer md:cursor-default" onClick={() => window.innerWidth < 768 && handleCustomerClick(customer)}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-italian-red/10 text-italian-red flex items-center justify-center font-bold">
+                                                <div className="w-10 h-10 rounded-full bg-italian-red/10 text-italian-red flex items-center justify-center font-bold shrink-0">
                                                     {customer.name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <span className="font-medium text-stone-800 dark:text-stone-200">{customer.name}</span>
@@ -176,11 +176,11 @@ const Customers = () => {
                                         </td>
                                         <td className="px-6 py-4 text-stone-600 dark:text-stone-400">
                                             <div className="flex items-center gap-2">
-                                                <Phone size={16} />
+                                                <Phone size={16} className="shrink-0" />
                                                 {customer.phone}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-stone-600 dark:text-stone-400 max-w-xs truncate">
+                                        <td className="px-6 py-4 text-stone-600 dark:text-stone-400 max-w-xs truncate hidden md:table-cell">
                                             {customer.address}
                                         </td>
                                         <td className="px-6 py-4 text-center">
@@ -188,15 +188,18 @@ const Customers = () => {
                                                 {customer.total_orders}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-stone-600 dark:text-stone-400 text-sm">
+                                        <td className="px-6 py-4 text-stone-600 dark:text-stone-400 text-sm hidden lg:table-cell">
                                             {formatDate(customer.created_at)}
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <button
-                                                onClick={() => handleCustomerClick(customer)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleCustomerClick(customer);
+                                                }}
                                                 className="text-italian-red hover:text-red-700 font-medium text-sm flex items-center gap-1 ml-auto"
                                             >
-                                                Detalhes <ArrowRight size={16} />
+                                                <span className="hidden md:inline">Detalhes</span> <ArrowRight size={16} />
                                             </button>
                                         </td>
                                     </tr>

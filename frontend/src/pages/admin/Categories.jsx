@@ -274,21 +274,26 @@ const Categories = () => {
                     <table className="w-full text-left">
                         <thead className="bg-stone-50 dark:bg-stone-800 text-stone-500 dark:text-stone-400 font-bold text-sm uppercase">
                             <tr>
-                                <th className="px-6 py-4 w-20">Ordem</th>
+                                <th className="px-6 py-4 w-20 hidden md:table-cell">Ordem</th>
                                 <th className="px-6 py-4">Nome</th>
-                                <th className="px-6 py-4">Pai</th>
+                                <th className="px-6 py-4 hidden md:table-cell">Pai</th>
                                 <th className="px-6 py-4 text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-stone-200 dark:divide-stone-700">
                             {filteredCategories.map((cat) => (
-                                <tr key={cat.id} className="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors">
-                                    <td className="px-6 py-4">
+                                <tr
+                                    key={cat.id}
+                                    className="hover:bg-stone-50 dark:hover:bg-stone-800/50 transition-colors cursor-pointer md:cursor-default"
+                                    onClick={() => window.innerWidth < 768 && handleEdit(cat)}
+                                >
+                                    <td className="px-6 py-4 hidden md:table-cell">
                                         <input
                                             type="number"
                                             value={cat.order || 0}
                                             onChange={(e) => handleOrderChange(cat.id, e.target.value)}
                                             className="w-16 p-1 rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-center text-sm"
+                                            onClick={(e) => e.stopPropagation()}
                                         />
                                     </td>
                                     <td className="px-6 py-4 font-medium text-stone-800 dark:text-stone-200 flex items-center gap-3">
@@ -297,19 +302,25 @@ const Categories = () => {
                                         )}
                                         {cat.name}
                                     </td>
-                                    <td className="px-6 py-4 text-stone-600 dark:text-stone-400">
+                                    <td className="px-6 py-4 text-stone-600 dark:text-stone-400 hidden md:table-cell">
                                         {getParentName(cat.parent_id)}
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-2">
                                             <button
-                                                onClick={() => handleEdit(cat)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEdit(cat);
+                                                }}
                                                 className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                                             >
                                                 <Pencil size={18} />
                                             </button>
                                             <button
-                                                onClick={() => handleDelete(cat.id)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete(cat.id);
+                                                }}
                                                 className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                                             >
                                                 <Trash2 size={18} />
