@@ -448,25 +448,56 @@ checkOpeningHours() {
                 });
             }
 
-            delay: 1200,
-                presence: 'composing',
-                    linkPreview: false
-        }
-    },
-    {
-        headers: {
-            'apikey': this.settings.evolution_api_key,
-                'Content-Type': 'application/json'
-        }
-    }
-            );
-} catch (error) {
-    console.error('Error sending WhatsApp message:', error.response?.data || error.message);
-}
-    }
+            const secondResponse = await this.openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: messages
+            });
 
-    // Notification Helper
-    async sendNotification(phone, status, orderId) {
+            const finalContent = secondResponse.choices[0].message.content;
+            await this.saveMessage(userPhone, 'assistant', finalContent);
+            await this.sendMessage(remoteJid, finalContent);
+
+        } else {
+            await this.saveMessage(userPhone, 'assistant', responseMessage.content);
+            await this.sendMessage(remoteJid, responseMessage.content);
+        }
+
+    } catch (error) {
+        console.error('Error processing AI message:', error);
+        const fs = require('fs');
+        const path = require('path');
+        fs.writeFileSync(path.join(__dirname, '..', 'ai_error.log'), `${new Date().toISOString()}: ${error.stack || error.message}\n${JSON.stringify(error, null, 2)}\n`);
+    }
+}
+
+async sendMessage(remoteJid, text) {
+    if (!this.settings) await this.loadSettings();
+
+    try {
+        await axios.post(
+            `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`,
+            {
+                number: remoteJid.replace('@s.whatsapp.net', ''),
+                text: text,
+                options: {
+                    delay: 1200,
+                    presence: 'composing',
+                    linkPreview: false
+                }
+            },
+            {
+                headers: {
+                    'apikey': this.settings.evolution_api_key,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+    } catch (error) {
+        console.error('Error sending WhatsApp message:', error.response?.data || error.message);
+    }
+}
+
+async sendNotification(phone, status, orderId) {
     await this.loadSettings();
     if (!this.settings) return;
 
