@@ -14,10 +14,7 @@ router.post('/webhook', async (req, res) => {
         const { data, sender } = req.body;
         console.log('Webhook received:', JSON.stringify(req.body, null, 2));
 
-        // DEBUG: Save last webhook to file
-        const fs = require('fs');
-        const path = require('path');
-        fs.writeFileSync(path.join(__dirname, '..', 'last_webhook.json'), JSON.stringify(req.body, null, 2));
+
 
         // Basic validation of Evolution API payload
         if (data && data.key && !data.key.fromMe) {

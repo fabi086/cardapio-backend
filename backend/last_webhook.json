@@ -1,0 +1,14 @@
+{
+  "sender": "5511999999999@s.whatsapp.net",
+  "data": {
+    "message": {
+      "conversation": "Teste de limite"
+    },
+    "key": {
+      "fromMe": false,
+      "remoteJid": "5511999999999@s.whatsapp.net"
+    },
+    "messageType": "conversation",
+    "pushName": "Test User"
+  }
+}

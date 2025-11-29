@@ -1,0 +1,11 @@
+Error: supabaseUrl is required.
+    at validateSupabaseUrl (C:\Users\FABIO BARBOZA\cardapio\backend\node_modules\@supabase\supabase-js\dist\main\lib\helpers.js:50:15)
+    at new SupabaseClient (C:\Users\FABIO BARBOZA\cardapio\backend\node_modules\@supabase\supabase-js\dist\main\SupabaseClient.js:41:59)
+    at createClient (C:\Users\FABIO BARBOZA\cardapio\backend\node_modules\@supabase\supabase-js\dist\main\index.js:46:12)
+    at Object.<anonymous> (C:\Users\FABIO BARBOZA\cardapio\backend\services\aiService.js:8:18)
+    at Module._compile (node:internal/modules/cjs/loader:1760:14)
+    at Object..js (node:internal/modules/cjs/loader:1893:10)
+    at Module.load (node:internal/modules/cjs/loader:1480:32)
+    at Module._load (node:internal/modules/cjs/loader:1299:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:244:24)
