@@ -264,239 +264,227 @@ class AIService {
             if (base64) {
                 userMessage = await this.transcribeAudio(base64);
                 if (!userMessage) {
-                    await this.sendMessage(remoteJid, "Desculpe, não consegui ouvir seu áudio. Pode escrever?");
-                    return;
-                }
-                await this.sendMessage(remoteJid, `🎤 *Entendi:* "${userMessage}"`);
-            } else {
-                console.log('❌ No base64 found for audio message. Ensure Webhook has "Download Media" enabled.');
-                return;
-            }
-        }
+                    // 1. Save User Message
+                    await this.saveMessage(userPhone, 'user', userMessage);
 
-        if (!userMessage) return;
+                    // 2. Check Opening Hours
+                    const { isOpen } = this.checkOpeningHours();
+                    const statusMessage = isOpen ? "The store is currently OPEN." : "The store is currently CLOSED. Inform the customer but allow them to schedule an order if they wish.";
 
-        // 1. Save User Message
-        await this.saveMessage(userPhone, 'user', userMessage);
+                    // 3. Fetch History
+                    const history = await this.getHistory(userPhone);
 
-        // 2. Check Opening Hours
-        const { isOpen } = this.checkOpeningHours();
-        const statusMessage = isOpen ? "The store is currently OPEN." : "The store is currently CLOSED. Inform the customer but allow them to schedule an order if they wish.";
+                    // 4. Fetch Customer Profile (Long-Term Memory)
+                    const { data: customer } = await supabase
+                        .from('customers')
+                        .select('name, address, cep')
+                        .eq('phone', userPhone)
+                        .single();
 
-        // 3. Fetch History
-        const history = await this.getHistory(userPhone);
+                    // 5. Fetch Last Order (Long-Term Memory)
+                    const { data: lastOrder } = await supabase
+                        .from('orders')
+                        .select('id, total, created_at, order_items(product_name, quantity)')
+                        .eq('customer_phone', userPhone)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
 
-        // 4. Fetch Customer Profile (Long-Term Memory)
-        const { data: customer } = await supabase
-            .from('customers')
-            .select('name, address, cep')
-            .eq('phone', userPhone)
-            .single();
-
-        // 5. Fetch Last Order (Long-Term Memory)
-        const { data: lastOrder } = await supabase
-            .from('orders')
-            .select('id, total, created_at, order_items(product_name, quantity)')
-            .eq('customer_phone', userPhone)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-
-        const tools = [
-            {
-                type: "function",
-                function: {
-                    name: "get_menu",
-                    description: "Get the list of available products in the menu",
-                    parameters: { type: "object", properties: {} }
-                }
-            },
-            {
-                type: "function",
-                function: {
-                    name: "register_customer",
-                    description: "Register or update a customer",
-                    parameters: {
-                        type: "object",
-                        properties: {
-                            name: { type: "string" },
-                            phone: { type: "string", description: "Customer phone number (e.g., 5511999999999)" },
-                            address: { type: "string" },
-                            cep: { type: "string" }
+                    const tools = [
+                        {
+                            type: "function",
+                            function: {
+                                name: "get_menu",
+                                description: "Get the list of available products in the menu",
+                                parameters: { type: "object", properties: {} }
+                            }
                         },
-                        required: ["name", "phone"]
-                    }
-                }
-            },
-            {
-                type: "function",
-                function: {
-                    name: "create_order",
-                    description: "Place a new order",
-                    parameters: {
-                        type: "object",
-                        properties: {
-                            customerPhone: { type: "string" },
-                            items: {
-                                type: "array",
-                                items: {
+                        {
+                            type: "function",
+                            function: {
+                                name: "register_customer",
+                                description: "Register or update a customer",
+                                parameters: {
                                     type: "object",
                                     properties: {
-                                        productId: { type: "integer" },
-                                        quantity: { type: "integer" },
-                                        modifiers: { type: "array", items: { type: "string" } }
+                                        name: { type: "string" },
+                                        phone: { type: "string", description: "Customer phone number (e.g., 5511999999999)" },
+                                        address: { type: "string" },
+                                        cep: { type: "string" }
                                     },
-                                    required: ["productId", "quantity"]
+                                    required: ["name", "phone"]
                                 }
-                            },
-                            paymentMethod: { type: "string", enum: ["Dinheiro", "Pix", "Cartão"] },
-                            changeFor: { type: "number", description: "Change needed for cash payment" }
+                            }
                         },
-                        required: ["customerPhone", "items", "paymentMethod"]
-                    }
-                }
-            },
-            {
-                type: "function",
-                function: {
-                    name: "check_order_status",
-                    description: "Check the status of an order",
-                    parameters: {
-                        type: "object",
-                        properties: {
-                            orderId: { type: "integer" }
+                        {
+                            type: "function",
+                            function: {
+                                name: "create_order",
+                                description: "Place a new order",
+                                parameters: {
+                                    type: "object",
+                                    properties: {
+                                        customerPhone: { type: "string" },
+                                        items: {
+                                            type: "array",
+                                            items: {
+                                                type: "object",
+                                                properties: {
+                                                    productId: { type: "integer" },
+                                                    quantity: { type: "integer" },
+                                                    modifiers: { type: "array", items: { type: "string" } }
+                                                },
+                                                required: ["productId", "quantity"]
+                                            }
+                                        },
+                                        paymentMethod: { type: "string", enum: ["Dinheiro", "Pix", "Cartão"] },
+                                        changeFor: { type: "number", description: "Change needed for cash payment" }
+                                    },
+                                    required: ["customerPhone", "items", "paymentMethod"]
+                                }
+                            }
                         },
-                        required: ["orderId"]
-                    }
-                }
-            }
-        ];
+                        {
+                            type: "function",
+                            function: {
+                                name: "check_order_status",
+                                description: "Check the status of an order",
+                                parameters: {
+                                    type: "object",
+                                    properties: {
+                                        orderId: { type: "integer" }
+                                    },
+                                    required: ["orderId"]
+                                }
+                            }
+                        }
+                    ];
 
-        try {
-            let contextInfo = `\n\nCURRENT STATUS: ${statusMessage}`;
-            contextInfo += `\nCURRENT DATE: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
+                    try {
+                        let contextInfo = `\n\nCURRENT STATUS: ${statusMessage}`;
+                        contextInfo += `\nCURRENT DATE: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
 
-            if (customer) {
-                contextInfo += `\n\nCUSTOMER PROFILE:\nName: ${customer.name}\nAddress: ${customer.address || 'Not registered'}`;
-            }
+                        if (customer) {
+                            contextInfo += `\n\nCUSTOMER PROFILE:\nName: ${customer.name}\nAddress: ${customer.address || 'Not registered'}`;
+                        }
 
-            if (lastOrder) {
-                const itemsList = lastOrder.order_items.map(i => `${i.quantity}x ${i.product_name}`).join(', ');
-                contextInfo += `\n\nLAST ORDER (${new Date(lastOrder.created_at).toLocaleDateString()}): ${itemsList} (Total: R$ ${lastOrder.total})`;
-            }
+                        if (lastOrder) {
+                            const itemsList = lastOrder.order_items.map(i => `${i.quantity}x ${i.product_name}`).join(', ');
+                            contextInfo += `\n\nLAST ORDER (${new Date(lastOrder.created_at).toLocaleDateString()}): ${itemsList} (Total: R$ ${lastOrder.total})`;
+                        }
 
-            const systemPrompt = `${this.settings.system_prompt}${contextInfo}
+                        const systemPrompt = `${this.settings.system_prompt}${contextInfo}
             
             IMPORTANT: You have access to the conversation history and customer profile. Use it to remember preferences and context.`;
 
-            const messages = [
-                { role: 'system', content: systemPrompt },
-                ...history, // Inject history
-                { role: 'user', content: `User Phone: ${userPhone}\nName: ${pushName}\nMessage: ${userMessage}` }
-            ];
+                        const messages = [
+                            { role: 'system', content: systemPrompt },
+                            ...history, // Inject history
+                            { role: 'user', content: `User Phone: ${userPhone}\nName: ${pushName}\nMessage: ${userMessage}` }
+                        ];
 
-            const completion = await this.openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: messages,
-                tools: tools,
-                tool_choice: "auto"
-            });
+                        const completion = await this.openai.chat.completions.create({
+                            model: 'gpt-4o-mini',
+                            messages: messages,
+                            tools: tools,
+                            tool_choice: "auto"
+                        });
 
-            const responseMessage = completion.choices[0].message;
+                        const responseMessage = completion.choices[0].message;
 
-            // Handle Tool Calls
-            if (responseMessage.tool_calls) {
-                messages.push(responseMessage);
+                        // Handle Tool Calls
+                        if (responseMessage.tool_calls) {
+                            messages.push(responseMessage);
 
-                for (const toolCall of responseMessage.tool_calls) {
-                    const functionName = toolCall.function.name;
-                    const functionArgs = JSON.parse(toolCall.function.arguments);
-                    console.log(`Executing tool: ${functionName}`, functionArgs);
+                            for (const toolCall of responseMessage.tool_calls) {
+                                const functionName = toolCall.function.name;
+                                const functionArgs = JSON.parse(toolCall.function.arguments);
+                                console.log(`Executing tool: ${functionName}`, functionArgs);
 
-                    let functionResult;
+                                let functionResult;
 
-                    if (functionName === 'get_menu') {
-                        functionResult = await this.getMenu();
-                    } else if (functionName === 'register_customer') {
-                        functionArgs.phone = userPhone;
-                        functionResult = await this.registerCustomer(functionArgs);
-                    } else if (functionName === 'create_order') {
-                        functionArgs.customerPhone = userPhone;
-                        functionResult = await this.createOrder(functionArgs);
-                    } else if (functionName === 'check_order_status') {
-                        functionResult = await this.checkOrderStatus(functionArgs);
+                                if (functionName === 'get_menu') {
+                                    functionResult = await this.getMenu();
+                                } else if (functionName === 'register_customer') {
+                                    functionArgs.phone = userPhone;
+                                    functionResult = await this.registerCustomer(functionArgs);
+                                } else if (functionName === 'create_order') {
+                                    functionArgs.customerPhone = userPhone;
+                                    functionResult = await this.createOrder(functionArgs);
+                                } else if (functionName === 'check_order_status') {
+                                    functionResult = await this.checkOrderStatus(functionArgs);
+                                }
+
+                                messages.push({
+                                    tool_call_id: toolCall.id,
+                                    role: "tool",
+                                    name: functionName,
+                                    content: functionResult,
+                                });
+                            }
+
+                            const secondResponse = await this.openai.chat.completions.create({
+                                model: 'gpt-4o-mini',
+                                messages: messages
+                            });
+
+                            const finalContent = secondResponse.choices[0].message.content;
+                            await this.saveMessage(userPhone, 'assistant', finalContent);
+                            await this.sendMessage(remoteJid, finalContent);
+
+                        } else {
+                            await this.saveMessage(userPhone, 'assistant', responseMessage.content);
+                            await this.sendMessage(remoteJid, responseMessage.content);
+                        }
+
+                    } catch (error) {
+                        console.error('Error processing AI message:', error);
                     }
-
-                    messages.push({
-                        tool_call_id: toolCall.id,
-                        role: "tool",
-                        name: functionName,
-                        content: functionResult,
-                    });
                 }
-
-                const secondResponse = await this.openai.chat.completions.create({
-                    model: 'gpt-4o-mini',
-                    messages: messages
-                });
-
-                const finalContent = secondResponse.choices[0].message.content;
-                await this.saveMessage(userPhone, 'assistant', finalContent);
-                await this.sendMessage(remoteJid, finalContent);
-
-            } else {
-                await this.saveMessage(userPhone, 'assistant', responseMessage.content);
-                await this.sendMessage(remoteJid, responseMessage.content);
-            }
-
-        } catch (error) {
-            console.error('Error processing AI message:', error);
-        }
-    }
 
     async sendMessage(remoteJid, text) {
-        if (!this.settings) await this.loadSettings();
+                    if (!this.settings) await this.loadSettings();
 
-        try {
-            await axios.post(
-                `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`,
-                {
-                    number: remoteJid.replace('@s.whatsapp.net', ''),
-                    text: text,
-                    options: {
-                        delay: 1200,
-                        presence: 'composing',
-                        linkPreview: false
-                    }
-                },
-                {
-                    headers: {
-                        'apikey': this.settings.evolution_api_key,
-                        'Content-Type': 'application/json'
+                    try {
+                        await axios.post(
+                            `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`,
+                            {
+                                number: remoteJid.replace('@s.whatsapp.net', ''),
+                                text: text,
+                                options: {
+                                    delay: 1200,
+                                    presence: 'composing',
+                                    linkPreview: false
+                                }
+                            },
+                            {
+                                headers: {
+                                    'apikey': this.settings.evolution_api_key,
+                                    'Content-Type': 'application/json'
+                                }
+                            }
+                        );
+                    } catch (error) {
+                        console.error('Error sending WhatsApp message:', error.response?.data || error.message);
                     }
                 }
-            );
-        } catch (error) {
-            console.error('Error sending WhatsApp message:', error.response?.data || error.message);
-        }
-    }
 
     // Notification Helper
     async sendNotification(phone, status, orderId) {
-        await this.loadSettings();
-        if (!this.settings) return;
+                    await this.loadSettings();
+                    if (!this.settings) return;
 
-        let message = `🔔 *Atualização do Pedido #${orderId}*\n\nSeu pedido está: *${status}*`;
+                    let message = `🔔 *Atualização do Pedido #${orderId}*\n\nSeu pedido está: *${status}*`;
 
-        if (status === 'Saiu para entrega') {
-            message += '\n\n🛵 Nosso entregador já está a caminho!';
-        } else if (status === 'Entregue') {
-            message += '\n\n😋 Bom apetite! Esperamos que goste.';
-        }
+                    if (status === 'Saiu para entrega') {
+                        message += '\n\n🛵 Nosso entregador já está a caminho!';
+                    } else if (status === 'Entregue') {
+                        message += '\n\n😋 Bom apetite! Esperamos que goste.';
+                    }
 
-        const remoteJid = `${phone}@s.whatsapp.net`;
-        await this.sendMessage(remoteJid, message);
-    }
-}
+                    const remoteJid = `${phone}@s.whatsapp.net`;
+                    await this.sendMessage(remoteJid, message);
+                }
+            }
 
-module.exports = new AIService();
+            module.exports = new AIService();
