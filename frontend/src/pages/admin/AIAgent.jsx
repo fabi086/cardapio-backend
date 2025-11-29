@@ -74,9 +74,6 @@ const AIAgent = () => {
             alert('Configurações salvas com sucesso!');
         } catch (error) {
             console.error('Error saving settings:', error);
-            alert(`Erro ao salvar configurações: ${error.message}\nTentando conectar em: ${API_URL}`);
-        } catch (error) {
-            console.error('Error saving settings:', error);
             const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
             alert(`Erro ao salvar configurações: ${error.message}\nTentando conectar em: ${API_URL}`);
         } finally {
