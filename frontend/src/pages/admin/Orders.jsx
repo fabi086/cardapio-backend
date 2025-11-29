@@ -109,7 +109,25 @@ const Orders = () => {
                 .eq('id', orderId);
 
             if (error) throw error;
+
             setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+
+            // Notify AI Agent
+            const order = orders.find(o => o.id === orderId);
+            if (order && order.customer_phone) {
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+                // Don't await this, let it run in background
+                fetch(`${API_URL}/api/ai/notify-status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone: order.customer_phone,
+                        status: newStatus,
+                        orderId: order.order_number || order.id.slice(0, 8)
+                    })
+                }).catch(err => console.error('Failed to notify AI:', err));
+            }
+
         } catch (error) {
             console.error('Error updating status:', error);
             alert('Erro ao atualizar status');

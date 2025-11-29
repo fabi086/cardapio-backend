@@ -93,4 +93,21 @@ router.post('/config', async (req, res) => {
     }
 });
 
+// Send Status Notification
+router.post('/notify-status', async (req, res) => {
+    try {
+        const { phone, status, orderId } = req.body;
+
+        if (!phone || !status || !orderId) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        await aiService.sendNotification(phone, status, orderId);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error sending notification:', error);
+        res.status(500).json({ error: 'Failed to send notification' });
+    }
+});
+
 module.exports = router;
