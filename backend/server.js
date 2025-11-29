@@ -12,6 +12,11 @@ app.use(express.json());
 const aiRoutes = require('./routes/aiRoutes');
 app.use('/api/ai', aiRoutes);
 
+// Root route to verify server is running
+app.get('/', (req, res) => {
+  res.send('Backend is running!');
+});
+
 // Get all categories
 app.get('/api/categories', (req, res) => {
   res.json(categories);
