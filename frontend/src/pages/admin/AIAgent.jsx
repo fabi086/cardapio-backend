@@ -38,6 +38,7 @@ const AIAgent = () => {
         } catch (error) {
             console.error('Error fetching settings:', error);
             // Don't block the UI, just show empty settings or error toast
+            console.log(`Failed to fetch from: ${import.meta.env.VITE_API_URL || 'http://localhost:3001'}`);
         } finally {
             setLoading(false);
         }
@@ -73,7 +74,11 @@ const AIAgent = () => {
             alert('Configurações salvas com sucesso!');
         } catch (error) {
             console.error('Error saving settings:', error);
-            alert(`Erro ao salvar configurações: ${error.message}`);
+            alert(`Erro ao salvar configurações: ${error.message}\nTentando conectar em: ${API_URL}`);
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+            alert(`Erro ao salvar configurações: ${error.message}\nTentando conectar em: ${API_URL}`);
         } finally {
             setSaving(false);
         }
