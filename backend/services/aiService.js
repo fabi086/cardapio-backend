@@ -382,31 +382,57 @@ class AIService {
                 await this.sendMessage(remoteJid, finalContent);
 
             } else {
-                await axios.post(
-                    `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`,
-                    {
-                        number: remoteJid.replace('@s.whatsapp.net', ''),
-                        text: text,
-                        options: {
-                            delay: 1200,
-                            presence: 'composing',
-                            linkPreview: false
-                        }
-                    },
-                    {
-                        headers: {
-                            'apikey': this.settings.evolution_api_key,
-                            let message = `🔔 *Atualização do Pedido #${orderId}*\n\nSeu pedido está: *${status}*`;
-
-                            if(status === 'Saiu para entrega') {
-                    message += '\n\n🛵 Nosso entregador já está a caminho!';
-                } else if (status === 'Entregue') {
-                    message += '\n\n😋 Bom apetite! Esperamos que goste.';
-                }
-
-                const remoteJid = `${phone}@s.whatsapp.net`;
-                await this.sendMessage(remoteJid, message);
+                await this.saveMessage(userPhone, 'assistant', responseMessage.content);
+                await this.sendMessage(remoteJid, responseMessage.content);
             }
+
+        } catch (error) {
+            console.error('Error processing AI message:', error);
+        }
+    }
+
+    async sendMessage(remoteJid, text) {
+        if (!this.settings) await this.loadSettings();
+
+        try {
+            await axios.post(
+                `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`,
+                {
+                    number: remoteJid.replace('@s.whatsapp.net', ''),
+                    text: text,
+                    options: {
+                        delay: 1200,
+                        presence: 'composing',
+                        linkPreview: false
+                    }
+                },
+                {
+                    headers: {
+                        'apikey': this.settings.evolution_api_key,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+        } catch (error) {
+            console.error('Error sending WhatsApp message:', error.response?.data || error.message);
+        }
+    }
+
+    async sendNotification(phone, status, orderId) {
+        await this.loadSettings();
+        if (!this.settings) return;
+
+        let message = `🔔 *Atualização do Pedido #${orderId}*\n\nSeu pedido está: *${status}*`;
+
+        if (status === 'Saiu para entrega') {
+            message += '\n\n🛵 Nosso entregador já está a caminho!';
+        } else if (status === 'Entregue') {
+            message += '\n\n😋 Bom apetite! Esperamos que goste.';
         }
 
-        module.exports = new AIService();
+        const remoteJid = `${phone}@s.whatsapp.net`;
+        await this.sendMessage(remoteJid, message);
+    }
+}
+
+module.exports = new AIService();
