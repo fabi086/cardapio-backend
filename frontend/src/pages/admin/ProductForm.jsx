@@ -159,7 +159,7 @@ const ProductForm = () => {
     };
 
     return (
-        <div className="p-8 max-w-5xl mx-auto">
+        <div className="p-4 md:p-8 max-w-5xl mx-auto">
             <div className="flex items-center gap-4 mb-8">
                 <button
                     onClick={() => navigate('/admin/products')}
@@ -167,7 +167,7 @@ const ProductForm = () => {
                 >
                     <ArrowLeft size={24} />
                 </button>
-                <h1 className="text-3xl font-display text-stone-800 dark:text-stone-100">
+                <h1 className="text-2xl md:text-3xl font-display text-stone-800 dark:text-stone-100">
                     {isEditing ? 'Editar Produto' : 'Novo Produto'}
                 </h1>
             </div>
@@ -175,7 +175,7 @@ const ProductForm = () => {
             <form onSubmit={handleSubmit} className="space-y-8">
 
                 {/* Basic Info */}
-                <div className="bg-white dark:bg-stone-900 p-8 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 space-y-6">
+                <div className="bg-white dark:bg-stone-900 p-4 md:p-8 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 space-y-6">
                     <h2 className="text-xl font-bold text-stone-800 dark:text-stone-100 mb-4">Informações Básicas</h2>
 
                     {/* Image Upload */}
@@ -255,16 +255,17 @@ const ProductForm = () => {
                 </div>
 
                 {/* Modifiers / Extras */}
-                <div className="bg-white dark:bg-stone-900 p-8 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 space-y-6">
+                <div className="bg-white dark:bg-stone-900 p-4 md:p-8 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 space-y-6">
                     <div className="flex justify-between items-center">
                         <h2 className="text-xl font-bold text-stone-800 dark:text-stone-100">Complementos e Opções</h2>
                         <button
                             type="button"
                             onClick={addModifierGroup}
-                            className="text-italian-red hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors"
+                            className="text-italian-red hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors text-sm md:text-base"
                         >
                             <Plus size={20} />
-                            Adicionar Grupo
+                            <span className="hidden md:inline">Adicionar Grupo</span>
+                            <span className="md:hidden">Add</span>
                         </button>
                     </div>
 
@@ -273,7 +274,7 @@ const ProductForm = () => {
                     )}
 
                     {formData.modifiers.map((group, groupIndex) => (
-                        <div key={groupIndex} className="border border-stone-200 dark:border-stone-700 rounded-xl p-6 bg-stone-50 dark:bg-stone-800/30">
+                        <div key={groupIndex} className="border border-stone-200 dark:border-stone-700 rounded-xl p-4 md:p-6 bg-stone-50 dark:bg-stone-800/30">
                             <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-4">
                                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
                                     <input
@@ -281,12 +282,12 @@ const ProductForm = () => {
                                         placeholder="Título (ex: Escolha o Tamanho)"
                                         value={group.title}
                                         onChange={e => updateModifierGroup(groupIndex, 'title', e.target.value)}
-                                        className="p-2 rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800"
+                                        className="p-2 rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 w-full"
                                     />
                                     <select
                                         value={group.type}
                                         onChange={e => updateModifierGroup(groupIndex, 'type', e.target.value)}
-                                        className="p-2 rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800"
+                                        className="p-2 rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 w-full"
                                     >
                                         <option value="radio">Seleção Única (Radio)</option>
                                         <option value="checkbox">Múltipla Escolha (Checkbox)</option>
@@ -300,7 +301,7 @@ const ProductForm = () => {
                                                 placeholder="Min"
                                                 value={group.min}
                                                 onChange={e => updateModifierGroup(groupIndex, 'min', parseInt(e.target.value))}
-                                                className="w-16 p-2 rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800"
+                                                className="w-full p-2 rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800"
                                                 title="Mínimo de opções"
                                             />
                                             <span className="text-stone-500">-</span>
@@ -309,7 +310,7 @@ const ProductForm = () => {
                                                 placeholder="Max"
                                                 value={group.max}
                                                 onChange={e => updateModifierGroup(groupIndex, 'max', parseInt(e.target.value))}
-                                                className="w-16 p-2 rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800"
+                                                className="w-full p-2 rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800"
                                                 title="Máximo de opções"
                                             />
                                         </div>
@@ -335,35 +336,39 @@ const ProductForm = () => {
                             </div>
 
                             {/* Options List */}
-                            <div className="space-y-2 pl-4 border-l-2 border-stone-200 dark:border-stone-700">
+                            <div className="space-y-3 pl-0 md:pl-4 border-l-0 md:border-l-2 border-stone-200 dark:border-stone-700">
                                 {group.options.map((option, optionIndex) => (
-                                    <div key={optionIndex} className="flex items-center gap-3">
-                                        <GripVertical size={16} className="text-stone-400" />
-                                        <input
-                                            type="text"
-                                            placeholder="Nome da Opção"
-                                            value={option.name}
-                                            onChange={e => updateOption(groupIndex, optionIndex, 'name', e.target.value)}
-                                            className="flex-1 p-2 rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800"
-                                        />
-                                        <div className="relative w-32">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 text-sm">R$</span>
+                                    <div key={optionIndex} className="flex flex-col sm:flex-row items-center gap-3 bg-white dark:bg-stone-900/50 p-3 rounded-lg border border-stone-100 dark:border-stone-700">
+                                        <div className="flex items-center gap-2 w-full sm:w-auto flex-1">
+                                            <GripVertical size={16} className="text-stone-400 hidden sm:block" />
                                             <input
-                                                type="number"
-                                                step="0.01"
-                                                placeholder="0.00"
-                                                value={option.price}
-                                                onChange={e => updateOption(groupIndex, optionIndex, 'price', parseFloat(e.target.value))}
-                                                className="w-full pl-8 p-2 rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800"
+                                                type="text"
+                                                placeholder="Nome da Opção"
+                                                value={option.name}
+                                                onChange={e => updateOption(groupIndex, optionIndex, 'name', e.target.value)}
+                                                className="flex-1 p-2 rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 w-full"
                                             />
                                         </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => removeOption(groupIndex, optionIndex)}
-                                            className="text-stone-400 hover:text-red-500"
-                                        >
-                                            <X size={18} />
-                                        </button>
+                                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                                            <div className="relative w-full sm:w-32">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-500 text-sm">R$</span>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    placeholder="0.00"
+                                                    value={option.price}
+                                                    onChange={e => updateOption(groupIndex, optionIndex, 'price', parseFloat(e.target.value))}
+                                                    className="w-full pl-8 p-2 rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800"
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeOption(groupIndex, optionIndex)}
+                                                className="text-stone-400 hover:text-red-500 p-1"
+                                            >
+                                                <X size={18} />
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                                 <button
