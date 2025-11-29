@@ -159,14 +159,37 @@ class AIService {
     // --- MAIN PROCESS ---
 
     async processMessage(messageData) {
+        console.log('--- AI Service: Processing Message ---');
+        console.log('Input Data:', JSON.stringify(messageData, null, 2));
+
         await this.loadSettings();
-        if (!this.settings || !this.settings.is_active || !this.openai) return;
+
+        if (!this.settings) {
+            console.log('❌ Settings not found in database');
+            return;
+        }
+
+        if (!this.settings.is_active) {
+            console.log('❌ AI Agent is disabled (is_active = false)');
+            return;
+        }
+
+        if (!this.openai) {
+            console.log('❌ OpenAI client not initialized (missing API Key?)');
+            return;
+        }
 
         const { remoteJid, pushName, conversation } = messageData;
         const userMessage = conversation || messageData.text?.message;
         const userPhone = remoteJid.replace('@s.whatsapp.net', '');
 
-        if (!userMessage) return;
+        console.log(`User: ${pushName} (${userPhone})`);
+        console.log(`Message: "${userMessage}"`);
+
+        if (!userMessage) {
+            console.log('❌ No text message content found');
+            return;
+        }
 
         const tools = [
             {
@@ -239,6 +262,7 @@ class AIService {
         ];
 
         try {
+            console.log('Sending request to OpenAI...');
             const messages = [
                 { role: 'system', content: this.settings.system_prompt + `\n\nCurrent Date: ${new Date().toLocaleString('pt-BR')}` },
                 { role: 'user', content: `User Phone: ${userPhone}\nName: ${pushName}\nMessage: ${userMessage}` }
@@ -252,14 +276,17 @@ class AIService {
             });
 
             const responseMessage = completion.choices[0].message;
+            console.log('OpenAI Response:', JSON.stringify(responseMessage, null, 2));
 
             // Handle Tool Calls
             if (responseMessage.tool_calls) {
+                console.log('Tool calls detected:', responseMessage.tool_calls.length);
                 messages.push(responseMessage); // Add assistant's thought process
 
                 for (const toolCall of responseMessage.tool_calls) {
                     const functionName = toolCall.function.name;
                     const functionArgs = JSON.parse(toolCall.function.arguments);
+                    console.log(`Executing tool: ${functionName}`, functionArgs);
 
                     let functionResult;
 
@@ -276,6 +303,8 @@ class AIService {
                         functionResult = await this.checkOrderStatus(functionArgs);
                     }
 
+                    console.log(`Tool result (${functionName}):`, functionResult);
+
                     messages.push({
                         tool_call_id: toolCall.id,
                         role: "tool",
@@ -285,15 +314,19 @@ class AIService {
                 }
 
                 // Get final response after tool execution
+                console.log('Getting final response from OpenAI...');
                 const secondResponse = await this.openai.chat.completions.create({
                     model: 'gpt-4o-mini',
                     messages: messages
                 });
 
-                await this.sendMessage(remoteJid, secondResponse.choices[0].message.content);
+                const finalContent = secondResponse.choices[0].message.content;
+                console.log('Final AI Response:', finalContent);
+                await this.sendMessage(remoteJid, finalContent);
 
             } else {
                 // No tool called, just normal response
+                console.log('No tools called, sending direct response');
                 await this.sendMessage(remoteJid, responseMessage.content);
             }
 
