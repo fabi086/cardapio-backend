@@ -28,6 +28,28 @@ class AIService {
         return this.settings;
     }
 
+    // --- HELPERS ---
+    formatPhone(phone) {
+        if (!phone) return phone;
+        let cleaned = phone.replace(/\D/g, '');
+
+        // If it's the LID (starts with 5666... and is long), return as is or handle differently?
+        // Actually, we want to format REAL numbers.
+        if (cleaned.length > 15) return cleaned; // Probably a LID or ID
+
+        // Default to BR (+55) and SP (11) if missing
+        // Case: 99999-9999 (9 digits) -> 5511999999999
+        if (cleaned.length === 8 || cleaned.length === 9) {
+            cleaned = '5511' + cleaned;
+        }
+        // Case: 1199999-9999 (11 digits) -> 5511999999999
+        else if (cleaned.length === 10 || cleaned.length === 11) {
+            cleaned = '55' + cleaned;
+        }
+
+        return cleaned;
+    }
+
     // --- TOOLS IMPLEMENTATION ---
 
     async getMenu() {
@@ -42,44 +64,77 @@ class AIService {
     }
 
     async registerCustomer({ name, phone, address, cep }) {
-        console.log('Tool called: registerCustomer', { name, phone });
+        const fs = require('fs');
+        const path = require('path');
+        const logFile = path.join(__dirname, '../debug_memory.log');
+        const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
+
+        log(`Tool called: registerCustomer. Input: ${JSON.stringify({ name, phone, address, cep })}`);
+
+        const formattedPhone = this.formatPhone(phone);
+        log(`Formatted phone: ${formattedPhone}`);
+
+        // Combine address and CEP if CEP is provided
+        let fullAddress = address;
+        if (cep) {
+            fullAddress = `${address} - CEP: ${cep}`;
+        }
+
         // Check if exists
         const { data: existing } = await supabase
             .from('customers')
             .select('id')
-            .eq('phone', phone)
+            .eq('phone', formattedPhone)
             .single();
 
         if (existing) {
             // Update address if provided
             if (address) {
-                await supabase.from('customers').update({ address, cep, name }).eq('id', existing.id);
+                await supabase.from('customers').update({ address: fullAddress, name }).eq('id', existing.id);
+                log(`Customer updated: ${existing.id}`);
                 return JSON.stringify({ success: true, message: 'Customer updated', customerId: existing.id });
             }
+            log(`Customer already exists: ${existing.id}`);
             return JSON.stringify({ success: true, message: 'Customer already exists', customerId: existing.id });
         }
 
         const { data, error } = await supabase
             .from('customers')
-            .insert([{ name, phone, address, cep }])
+            .insert([{ name, phone: formattedPhone, address: fullAddress }])
             .select()
             .single();
 
-        if (error) return JSON.stringify({ error: error.message });
+        if (error) {
+            log(`Error registering customer: ${error.message}`);
+            return JSON.stringify({ error: error.message });
+        }
+
+        log(`Customer registered: ${data.id}`);
         return JSON.stringify({ success: true, customerId: data.id });
     }
 
     async createOrder({ customerPhone, items, paymentMethod, changeFor, deliveryFee = 0 }) {
-        console.log('Tool called: createOrder', { customerPhone, items });
+        const fs = require('fs');
+        const path = require('path');
+        const logFile = path.join(__dirname, '../debug_memory.log');
+        const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
+
+        log(`Tool called: createOrder. Input: ${JSON.stringify({ customerPhone, items })}`);
+
+        const formattedPhone = this.formatPhone(customerPhone);
+        log(`Formatted customer phone: ${formattedPhone}`);
 
         // 1. Get Customer
         const { data: customer } = await supabase
             .from('customers')
             .select('*')
-            .eq('phone', customerPhone)
+            .eq('phone', formattedPhone)
             .single();
 
-        if (!customer) return JSON.stringify({ error: 'Customer not found. Register first.' });
+        if (!customer) {
+            log(`Customer not found for phone: ${formattedPhone}`);
+            return JSON.stringify({ error: `Customer not found for phone ${formattedPhone}. Register first.` });
+        }
 
         // 2. Calculate Total & Validate Items
         let total = 0;
@@ -125,7 +180,10 @@ class AIService {
             .select()
             .single();
 
-        if (orderError) return JSON.stringify({ error: orderError.message });
+        if (orderError) {
+            log(`Error creating order: ${orderError.message}`);
+            return JSON.stringify({ error: orderError.message });
+        }
 
         // 4. Insert Order Items
         const itemsToInsert = orderItemsData.map(item => ({
@@ -140,7 +198,7 @@ class AIService {
         if (itemsError) return JSON.stringify({ error: 'Order created but items failed: ' + itemsError.message });
 
         // 5. Notify Admin (Optional: via WebSocket or just rely on polling)
-
+        log(`Order created successfully: ${order.id}`);
         return JSON.stringify({ success: true, orderId: order.id, total, message: 'Order placed successfully' });
     }
 
@@ -159,23 +217,44 @@ class AIService {
     // --- MEMORY & SCHEDULE HELPERS ---
 
     async getHistory(phone) {
-        const { data } = await supabase
+        const fs = require('fs');
+        const path = require('path');
+        const logFile = path.join(__dirname, '../debug_memory.log');
+        const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
+
+        log(`Fetching history for ${phone}...`);
+        const { data, error } = await supabase
             .from('chat_history')
             .select('role, content')
             .eq('user_phone', phone)
-            .in('role', ['user', 'assistant']) // Only get text messages to avoid tool errors
+            .in('role', ['user', 'assistant'])
             .not('content', 'is', null)
             .order('created_at', { ascending: false })
             .limit(10);
 
+        if (error) {
+            console.error('Error fetching history:', error);
+            log(`Error fetching history: ${JSON.stringify(error)}`);
+            return [];
+        }
+
+        log(`Found ${data ? data.length : 0} previous messages for ${phone}`);
         return data ? data.reverse() : [];
     }
 
-
-
     async saveMessage(phone, role, content) {
         if (!content) return;
-        await supabase.from('chat_history').insert([{ user_phone: phone, role, content }]);
+        const fs = require('fs');
+        const path = require('path');
+        const logFile = path.join(__dirname, '../debug_memory.log');
+        const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
+
+        log(`Saving message for ${phone} (${role}): ${content.substring(0, 50)}...`);
+        const { error } = await supabase.from('chat_history').insert([{ user_phone: phone, role, content }]);
+        if (error) {
+            console.error('Error saving message:', error);
+            log(`Error saving message: ${JSON.stringify(error)}`);
+        }
     }
 
     checkOpeningHours() {
@@ -248,70 +327,85 @@ class AIService {
         }
     }
 
-    async processMessage(messageData) {
-        console.log('--- AI Service: Processing Message ---');
+    async processMessage(messageData, channel = 'whatsapp') {
+        console.log(`--- AI Service: Processing Message (${channel}) ---`);
+        const responses = [];
 
         await this.loadSettings();
-        if (!this.settings || !this.settings.is_active || !this.openai) return;
+        if (!this.settings || !this.settings.is_active || !this.openai) return [];
 
         const { remoteJid, pushName, conversation, audioMessage, base64 } = messageData;
         let userMessage = conversation || messageData.text?.message;
-        const userPhone = remoteJid.replace('@s.whatsapp.net', '');
+        const userPhone = remoteJid.replace('@s.whatsapp.net', '').replace('@lid', '');
 
-        // Handle Audio - TEMPORARILY DISABLED
-        /*
-        if (audioMessage) {
+        // Handle Audio
+        if (audioMessage || base64) {
             console.log('Audio message detected');
             if (base64) {
                 userMessage = await this.transcribeAudio(base64);
                 if (!userMessage) {
-                    await this.sendMessage(remoteJid, "Desculpe, não consegui ouvir seu áudio. Pode escrever?");
-                    return;
+                    await this.sendMessage(remoteJid, 'Desculpe, não consegui entender o áudio.', channel);
+                    return [];
                 }
-                await this.sendMessage(remoteJid, `🎤 *Entendi:* "${userMessage}"`);
+                console.log('Transcribed text:', userMessage);
             } else {
-                console.log('❌ No base64 found for audio message.');
-                await this.sendMessage(remoteJid, "⚠️ *Configuração Necessária*\n\nRecebi seu áudio, mas ele veio vazio.\n\nPor favor, na **Evolution API**, vá em **Webhook** e ative a opção **Download Media** (ou Include Base64).");
-                return;
+                console.log('Audio message without base64 data');
+                await this.sendMessage(remoteJid, 'Não consegui processar o áudio. Pode escrever?', channel);
+                return [];
             }
         }
-        */
 
-        if (!userMessage) return;
+        if (!userMessage) return [];
+
+        console.log(`User Message (${userPhone}): ${userMessage}`);
 
         try {
             // 1. Save User Message
             await this.saveMessage(userPhone, 'user', userMessage);
 
-            // 2. Check Opening Hours
-            const { isOpen } = this.checkOpeningHours();
-            const statusMessage = isOpen ? "The store is currently OPEN." : "The store is currently CLOSED. Inform the customer but allow them to schedule an order if they wish.";
-
-            // 3. Fetch History
+            // 2. Get History
             const history = await this.getHistory(userPhone);
 
-            // 4. Fetch Customer Profile (Long-Term Memory)
-            const { data: customer } = await supabase
-                .from('customers')
-                .select('name, address, cep')
-                .eq('phone', userPhone)
-                .single();
+            // 3. Check Opening Hours
+            const { isOpen } = this.checkOpeningHours();
+            const systemPrompt = `
+${this.settings.system_prompt || 'Você é um assistente virtual.'}
 
-            // 5. Fetch Last Order (Long-Term Memory)
-            const { data: lastOrder } = await supabase
-                .from('orders')
-                .select('id, total, created_at, order_items(product_name, quantity)')
-                .eq('customer_phone', userPhone)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
+${!isOpen ? 'AVISO: O estabelecimento está FECHADO agora. Avise o cliente e diga que o pedido será processado quando abrir.' : ''}
 
+CONTEXTO DO CLIENTE:
+Nome: ${pushName || 'Cliente'}
+Telefone: ${userPhone}
+Histórico de Pedidos: (Consultar se necessário)
+
+INSTRUÇÕES:
+- Seja educado e prestativo.
+- Use emojis.
+- AO MOSTRAR O CARDÁPIO: Organize por categorias, use negrito para nomes (*Nome*), e mostre o preço (R$ XX,XX). Não mande JSON cru.
+- AO CRIAR PEDIDO:
+  1. Pergunte se é **Entrega** ou **Retirada**.
+  2. Se for **Entrega**: Pergunte o **Endereço Completo** e o **CEP**.
+  3. Se for **Retirada**: Avise que o endereço é Rua Exemplo, 123.
+  4. Confirme o valor total e a forma de pagamento.
+  5. SÓ DEPOIS de ter tudo isso, chame `create_order`.
+  6. Forneça o link de acompanhamento no formato: [Acompanhar Pedido](/tracking/ID_DO_PEDIDO).
+- Para ver status, use check_order_status.
+- Se o cliente mandar o número de telefone, use register_customer para salvar.
+`;
+
+            const messages = [
+                { role: "system", content: systemPrompt },
+                ...history.map(msg => ({ role: msg.role, content: msg.content })),
+                { role: "user", content: userMessage }
+            ];
+
+            // 4. Define Tools
             const tools = [
                 {
                     type: "function",
                     function: {
                         name: "get_menu",
-                        description: "Get the list of available products in the menu",
+                        description: "Retorna os itens do cardápio.",
                         parameters: { type: "object", properties: {} }
                     }
                 },
@@ -319,12 +413,12 @@ class AIService {
                     type: "function",
                     function: {
                         name: "register_customer",
-                        description: "Register or update a customer",
+                        description: "Registra ou atualiza um cliente.",
                         parameters: {
                             type: "object",
                             properties: {
                                 name: { type: "string" },
-                                phone: { type: "string", description: "Customer phone number (e.g., 5511999999999)" },
+                                phone: { type: "string" },
                                 address: { type: "string" },
                                 cep: { type: "string" }
                             },
@@ -336,7 +430,7 @@ class AIService {
                     type: "function",
                     function: {
                         name: "create_order",
-                        description: "Place a new order",
+                        description: "Cria um novo pedido.",
                         parameters: {
                             type: "object",
                             properties: {
@@ -354,9 +448,10 @@ class AIService {
                                     }
                                 },
                                 paymentMethod: { type: "string", enum: ["Dinheiro", "Pix", "Cartão"] },
-                                changeFor: { type: "number", description: "Change needed for cash payment" }
+                                changeFor: { type: "number" },
+                                deliveryFee: { type: "number" }
                             },
-                            required: ["customerPhone", "items", "paymentMethod"]
+                            required: ["customerPhone", "items"]
                         }
                     }
                 },
@@ -364,7 +459,7 @@ class AIService {
                     type: "function",
                     function: {
                         name: "check_order_status",
-                        description: "Check the status of an order",
+                        description: "Verifica o status de um pedido.",
                         parameters: {
                             type: "object",
                             properties: {
@@ -376,27 +471,12 @@ class AIService {
                 }
             ];
 
-            let contextInfo = `\n\nCURRENT STATUS: ${statusMessage}`;
-            contextInfo += `\nCURRENT DATE: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`;
+            const fs = require('fs');
+            const path = require('path');
+            const logFile = path.join(__dirname, '../debug_memory.log');
+            const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
-            if (customer) {
-                contextInfo += `\n\nCUSTOMER PROFILE:\nName: ${customer.name}\nAddress: ${customer.address || 'Not registered'}`;
-            }
-
-            if (lastOrder) {
-                const itemsList = lastOrder.order_items.map(i => `${i.quantity}x ${i.product_name}`).join(', ');
-                contextInfo += `\n\nLAST ORDER (${new Date(lastOrder.created_at).toLocaleDateString()}): ${itemsList} (Total: R$ ${lastOrder.total})`;
-            }
-
-            const systemPrompt = `${this.settings.system_prompt}${contextInfo}
-            
-            IMPORTANT: You have access to the conversation history and customer profile. Use it to remember preferences and context.`;
-
-            const messages = [
-                { role: 'system', content: systemPrompt },
-                ...history, // Inject history
-                { role: 'user', content: `User Phone: ${userPhone}\nName: ${pushName}\nMessage: ${userMessage}` }
-            ];
+            log(`Sending request to OpenAI...`);
 
             const completion = await this.openai.chat.completions.create({
                 model: 'gpt-4o-mini',
@@ -406,6 +486,7 @@ class AIService {
             });
 
             const responseMessage = completion.choices[0].message;
+            log(`OpenAI response received. Tool calls: ${responseMessage.tool_calls ? responseMessage.tool_calls.length : 0}`);
 
             // Handle Tool Calls
             if (responseMessage.tool_calls) {
@@ -415,6 +496,7 @@ class AIService {
                     const functionName = toolCall.function.name;
                     const functionArgs = JSON.parse(toolCall.function.arguments);
                     console.log(`Executing tool: ${functionName}`, functionArgs);
+                    log(`Executing tool: ${functionName}`);
 
                     let functionResult;
 
@@ -424,7 +506,9 @@ class AIService {
                         functionArgs.phone = userPhone;
                         functionResult = await this.registerCustomer(functionArgs);
                     } else if (functionName === 'create_order') {
-                        functionArgs.customerPhone = userPhone;
+                        // Do NOT override customerPhone with userPhone (which is web_xxx)
+                        // Let the AI pass the phone number it collected from the user
+                        if (!functionArgs.customerPhone) functionArgs.customerPhone = userPhone; // Fallback only
                         functionResult = await this.createOrder(functionArgs);
                     } else if (functionName === 'check_order_status') {
                         functionResult = await this.checkOrderStatus(functionArgs);
@@ -445,20 +529,36 @@ class AIService {
 
                 const finalContent = secondResponse.choices[0].message.content;
                 await this.saveMessage(userPhone, 'assistant', finalContent);
-                await this.sendMessage(remoteJid, finalContent);
+                const sentMsg = await this.sendMessage(remoteJid, finalContent, channel);
+                if (sentMsg) responses.push(sentMsg);
+                log(`Sent final response (after tools).`);
 
             } else {
                 await this.saveMessage(userPhone, 'assistant', responseMessage.content);
-                await this.sendMessage(remoteJid, responseMessage.content);
+                const sentMsg = await this.sendMessage(remoteJid, responseMessage.content, channel);
+                if (sentMsg) responses.push(sentMsg);
+                log(`Sent final response (text only).`);
             }
 
         } catch (error) {
             console.error('Error processing AI message:', error);
+            const fs = require('fs');
+            const path = require('path');
+            const logFile = path.join(__dirname, '../debug_memory.log');
+            try {
+                fs.appendFileSync(logFile, `${new Date().toISOString()} - ERROR: ${error.message}\n`);
+            } catch (e) { }
         }
+
+        return responses;
     }
 
-    async sendMessage(remoteJid, text) {
+    async sendMessage(remoteJid, text, channel = 'whatsapp') {
         if (!this.settings) await this.loadSettings();
+
+        if (channel === 'web') {
+            return { text, role: 'assistant', timestamp: new Date().toISOString() };
+        }
 
         try {
             await axios.post(
@@ -488,7 +588,7 @@ class AIService {
         await this.loadSettings();
         if (!this.settings) return;
 
-        let message = `🔔 *Atualização do Pedido #${orderId}*\n\nSeu pedido está: *${status}*`;
+        let message = `🔔 * Atualização do Pedido #${orderId}*\n\nSeu pedido está: *${status}*`;
 
         if (status === 'Saiu para entrega') {
             message += '\n\n🛵 Nosso entregador já está a caminho!';
@@ -497,6 +597,10 @@ class AIService {
         }
 
         const remoteJid = `${phone}@s.whatsapp.net`;
+
+        // Save to history so Web Chat can see it via polling
+        await this.saveMessage(phone, 'assistant', message);
+
         await this.sendMessage(remoteJid, message);
     }
 }

@@ -14,8 +14,6 @@ router.post('/webhook', async (req, res) => {
         const { data, sender } = req.body;
         console.log('Webhook received:', JSON.stringify(req.body, null, 2));
 
-
-
         // Basic validation of Evolution API payload
         if (data && data.key && !data.key.fromMe) {
             await aiService.processMessage({
@@ -111,6 +109,42 @@ router.post('/notify-status', async (req, res) => {
     } catch (error) {
         console.error('Error sending notification:', error);
         res.status(500).json({ error: 'Failed to send notification' });
+    }
+});
+
+// Web Chat Endpoint
+router.post('/chat', async (req, res) => {
+    try {
+        const { message, audio, userPhone } = req.body;
+
+        // Simulate a WhatsApp-like message structure for the service
+        const messageData = {
+            remoteJid: `${userPhone}@s.whatsapp.net`,
+            pushName: 'Web User',
+            conversation: message,
+            text: { message: message },
+            base64: audio // Pass audio base64 if present
+        };
+
+        const responses = await aiService.processMessage(messageData, 'web');
+        res.json({ success: true, responses });
+    } catch (error) {
+        console.error('Error in chat endpoint:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Poll Endpoint
+router.get('/poll', async (req, res) => {
+    try {
+        const { userPhone } = req.query;
+        if (!userPhone) return res.status(400).json({ error: 'userPhone required' });
+
+        const history = await aiService.getHistory(userPhone);
+        res.json({ success: true, messages: history });
+    } catch (error) {
+        console.error('Error in poll endpoint:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 

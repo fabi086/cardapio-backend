@@ -16,6 +16,8 @@ import Customers from './pages/admin/Customers';
 import Settings from './pages/admin/Settings';
 import AIAgent from './pages/admin/AIAgent';
 
+import ChatWidget from './components/ChatWidget';
+
 function App() {
   return (
     <CartProvider>
@@ -44,6 +46,7 @@ function App() {
               <Route path="settings" element={<Settings />} />
             </Route>
           </Routes>
+          <ChatWidget />
         </Router>
       </BusinessSettingsProvider>
     </CartProvider>
