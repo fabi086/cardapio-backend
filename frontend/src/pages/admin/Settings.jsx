@@ -273,7 +273,11 @@ const Settings = () => {
 
     if (loading) return <div className="p-8">Carregando...</div>;
 
-    const webhookUrl = `${(import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '')}/api/ai/webhook`;
+    const getBaseUrl = () => {
+        if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL.replace(/\/$/, '');
+        return window.location.origin;
+    };
+    const webhookUrl = `${getBaseUrl()}/api/ai/webhook`;
 
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto">

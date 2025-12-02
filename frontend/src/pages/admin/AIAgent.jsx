@@ -23,7 +23,7 @@ const AIAgent = () => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-            const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+            const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3002').replace(/\/$/, '');
             const response = await fetch(`${API_URL}/api/ai/config`, {
                 signal: controller.signal
             });
@@ -38,7 +38,7 @@ const AIAgent = () => {
         } catch (error) {
             console.error('Error fetching settings:', error);
             // Don't block the UI, just show empty settings or error toast
-            console.log(`Failed to fetch from: ${import.meta.env.VITE_API_URL || 'http://localhost:3001'}`);
+            console.log(`Failed to fetch from: ${import.meta.env.VITE_API_URL || 'http://localhost:3002'}`);
         } finally {
             setLoading(false);
         }
@@ -57,7 +57,7 @@ const AIAgent = () => {
         setSaving(true);
         try {
             // Save via backend endpoint to ensure consistency
-            const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+            const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3002').replace(/\/$/, '');
             const response = await fetch(`${API_URL}/api/ai/config`, {
                 method: 'POST',
                 headers: {
@@ -74,7 +74,7 @@ const AIAgent = () => {
             alert('Configurações salvas com sucesso!');
         } catch (error) {
             console.error('Error saving settings:', error);
-            const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+            const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3002').replace(/\/$/, '');
             alert(`Erro ao salvar configurações: ${error.message}\nTentando conectar em: ${API_URL}`);
         } finally {
             setSaving(false);

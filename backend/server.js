@@ -4,7 +4,13 @@ const cors = require('cors');
 const { menuItems, categories } = require('./data/menu');
 
 const app = express();
-const PORT = 3001;
+const PORT = 3002;
+
+// Log startup
+const fs = require('fs');
+const path = require('path');
+const logFile = path.join(__dirname, 'debug_memory.log');
+try { fs.appendFileSync(logFile, `${new Date().toISOString()} - SERVER STARTING...\n`); } catch (e) { }
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -12,6 +18,9 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const aiRoutes = require('./routes/aiRoutes');
 app.use('/api/ai', aiRoutes);
+
+const couponRoutes = require('./routes/couponRoutes');
+app.use('/api/coupons', couponRoutes);
 
 // Root route to verify server is running
 app.get('/', (req, res) => {
@@ -44,9 +53,13 @@ app.post('/api/send-whatsapp', (req, res) => {
   res.json({ success: true, info: 'WhatsApp message simulated' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
 
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);

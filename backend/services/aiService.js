@@ -2,9 +2,8 @@ const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
 
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
+const supabaseUrl = 'https://pluryiqzywfsovrcuhat.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsdXJ5aXF6eXdmc292cmN1aGF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNDc2NzMsImV4cCI6MjA3OTgyMzY3M30.qidjRUyB-_uspMzVAKEWGxuSHMCezAxZsHtN3IgxZqA';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 class AIService {
@@ -33,16 +32,11 @@ class AIService {
         if (!phone) return phone;
         let cleaned = phone.replace(/\D/g, '');
 
-        // If it's the LID (starts with 5666... and is long), return as is or handle differently?
-        // Actually, we want to format REAL numbers.
-        if (cleaned.length > 15) return cleaned; // Probably a LID or ID
+        if (cleaned.length > 15) return cleaned;
 
-        // Default to BR (+55) and SP (11) if missing
-        // Case: 99999-9999 (9 digits) -> 5511999999999
         if (cleaned.length === 8 || cleaned.length === 9) {
             cleaned = '5511' + cleaned;
         }
-        // Case: 1199999-9999 (11 digits) -> 5511999999999
         else if (cleaned.length === 10 || cleaned.length === 11) {
             cleaned = '55' + cleaned;
         }
@@ -53,54 +47,167 @@ class AIService {
     // --- TOOLS IMPLEMENTATION ---
 
     async getMenu() {
-        console.log('Tool called: getMenu');
-        const { data: products, error } = await supabase
-            .from('products')
-            .select('id, name, description, price, category_id')
-            .eq('is_available', true);
+        const fs = require('fs');
+        const path = require('path');
+        const logFile = path.join(__dirname, '../debug_memory.log');
 
-        if (error) return JSON.stringify({ error: error.message });
-        return JSON.stringify(products);
+        const logToFile = (msg) => {
+            try {
+                fs.appendFileSync(logFile, `${new Date().toISOString()} - [getMenu] ${msg}\n`);
+            } catch (e) {
+                console.error('Failed to write to log file:', e);
+            }
+        };
+
+        logToFile('Tool called: getMenu');
+        logToFile(`Supabase URL defined: ${!!process.env.SUPABASE_URL}`);
+
+        try {
+            const { data: products, error } = await supabase
+                .from('products')
+                .select('id, name, description, price, category_id')
+                .eq('is_available', true);
+
+            if (error) {
+                logToFile(`Supabase Error: ${JSON.stringify(error)}`);
+                return JSON.stringify({ error: error.message });
+            }
+
+            logToFile(`Query success. Found ${products ? products.length : 0} items.`);
+            return JSON.stringify(products);
+        } catch (err) {
+            logToFile(`Unexpected Error: ${err.message}`);
+            return JSON.stringify({ error: err.message });
+        }
     }
 
-    async registerCustomer({ name, phone, address, cep }) {
+    async calculateDeliveryFee(cep) {
         const fs = require('fs');
         const path = require('path');
         const logFile = path.join(__dirname, '../debug_memory.log');
         const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
-        log(`Tool called: registerCustomer. Input: ${JSON.stringify({ name, phone, address, cep })}`);
+        log(`Calculating delivery fee for CEP: ${cep}`);
+
+        try {
+            // Buscar zonas de entrega ativas
+            const { data: zones, error } = await supabase
+                .from('delivery_zones')
+                .select('*')
+                .eq('active', true);
+
+            if (error) {
+                log(`Error fetching zones: ${error.message}`);
+                return { fee: null, zone: null, error: 'Erro ao buscar zonas de entrega' };
+            }
+
+            if (!zones || zones.length === 0) {
+                log('No delivery zones configured');
+                return { fee: 0, zone: null, error: null, message: 'Sem zonas configuradas, frete grátis' };
+            }
+
+            const cleanCep = parseInt(cep.replace(/\D/g, ''));
+            log(`Clean CEP: ${cleanCep}`);
+
+            for (const zone of zones) {
+                const start = parseInt(zone.cep_start.replace(/\D/g, ''));
+                const end = parseInt(zone.cep_end.replace(/\D/g, ''));
+
+                if (cleanCep >= start && cleanCep <= end) {
+                    // Verificar CEPs excluídos
+                    if (zone.excluded_ceps) {
+                        const excluded = zone.excluded_ceps.split(',')
+                            .map(c => parseInt(c.trim().replace(/\D/g, '')));
+                        if (excluded.includes(cleanCep)) {
+                            log(`CEP ${cleanCep} is in excluded list for zone ${zone.name}`);
+                            continue;
+                        }
+                    }
+
+                    log(`CEP ${cleanCep} found in zone: ${zone.name}, fee: ${zone.fee}`);
+                    return { fee: zone.fee, zone: zone.name, error: null };
+                }
+            }
+
+            log(`CEP ${cleanCep} not found in any zone`);
+            return { fee: null, zone: null, error: 'CEP fora da área de entrega' };
+        } catch (err) {
+            log(`Error calculating delivery fee: ${err.message}`);
+            return { fee: null, zone: null, error: 'Erro ao calcular frete' };
+        }
+    }
+
+    async registerCustomer({ name, phone, address, cep, street, number, complement, neighborhood, city, state }) {
+        const fs = require('fs');
+        const path = require('path');
+        const logFile = path.join(__dirname, '../debug_memory.log');
+        const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
+
+        log(`Tool called: registerCustomer. Input: ${JSON.stringify({ name, phone, address, cep, street, number, complement, neighborhood, city, state })}`);
 
         const formattedPhone = this.formatPhone(phone);
         log(`Formatted phone: ${formattedPhone}`);
 
-        // Combine address and CEP if CEP is provided
-        let fullAddress = address;
-        if (cep) {
-            fullAddress = `${address} - CEP: ${cep}`;
-        }
-
-        // Check if exists
+        // Buscar cliente existente
         const { data: existing } = await supabase
             .from('customers')
-            .select('id')
+            .select('*')
             .eq('phone', formattedPhone)
             .single();
 
         if (existing) {
-            // Update address if provided
-            if (address) {
-                await supabase.from('customers').update({ address: fullAddress, name }).eq('id', existing.id);
+            // Cliente existe - atualizar se novos dados fornecidos
+            const updateData = {};
+            if (name && name !== existing.name) updateData.name = name;
+            if (address && address !== existing.address) updateData.address = address;
+            if (cep && cep !== existing.cep) updateData.cep = cep;
+            if (street && street !== existing.street) updateData.street = street;
+            if (number && number !== existing.number) updateData.number = number;
+            if (complement && complement !== existing.complement) updateData.complement = complement;
+            if (neighborhood && neighborhood !== existing.neighborhood) updateData.neighborhood = neighborhood;
+            if (city && city !== existing.city) updateData.city = city;
+            if (state && state !== existing.state) updateData.state = state;
+
+            if (Object.keys(updateData).length > 0) {
+                await supabase.from('customers').update(updateData).eq('id', existing.id);
                 log(`Customer updated: ${existing.id}`);
-                return JSON.stringify({ success: true, message: 'Customer updated', customerId: existing.id });
             }
+
             log(`Customer already exists: ${existing.id}`);
-            return JSON.stringify({ success: true, message: 'Customer already exists', customerId: existing.id });
+            return JSON.stringify({
+                success: true,
+                customerId: existing.id,
+                customerExists: true,
+                savedData: {
+                    name: existing.name,
+                    address: existing.address,
+                    cep: existing.cep,
+                    street: existing.street,
+                    number: existing.number,
+                    complement: existing.complement,
+                    neighborhood: existing.neighborhood,
+                    city: existing.city,
+                    state: existing.state
+                },
+                message: 'Cliente já cadastrado. Dados salvos carregados.'
+            });
         }
 
+        // Cliente novo - cadastrar
         const { data, error } = await supabase
             .from('customers')
-            .insert([{ name, phone: formattedPhone, address: fullAddress }])
+            .insert([{
+                name,
+                phone: formattedPhone,
+                address,
+                cep,
+                street,
+                number,
+                complement,
+                neighborhood,
+                city,
+                state
+            }])
             .select()
             .single();
 
@@ -110,21 +217,31 @@ class AIService {
         }
 
         log(`Customer registered: ${data.id}`);
-        return JSON.stringify({ success: true, customerId: data.id });
+        return JSON.stringify({
+            success: true,
+            customerId: data.id,
+            customerExists: false,
+            message: 'Cliente cadastrado com sucesso!'
+        });
     }
 
-    async createOrder({ customerPhone, items, paymentMethod, changeFor, deliveryFee = 0 }) {
+    async createOrder({ customerPhone, items, paymentMethod, changeFor, cep, deliveryType = 'delivery' }) {
         const fs = require('fs');
         const path = require('path');
         const logFile = path.join(__dirname, '../debug_memory.log');
         const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
-        log(`Tool called: createOrder. Input: ${JSON.stringify({ customerPhone, items })}`);
+        log(`===== CREATE ORDER CALLED =====`);
+        log(`Input customerPhone: ${customerPhone}`);
+        log(`Input items: ${JSON.stringify(items)}`);
+        log(`Input paymentMethod: ${paymentMethod}`);
+        log(`Input cep: ${cep}`);
+        log(`Input deliveryType: ${deliveryType}`);
 
         const formattedPhone = this.formatPhone(customerPhone);
         log(`Formatted customer phone: ${formattedPhone}`);
 
-        // 1. Get Customer
+        // 1. Buscar cliente
         const { data: customer } = await supabase
             .from('customers')
             .select('*')
@@ -133,48 +250,127 @@ class AIService {
 
         if (!customer) {
             log(`Customer not found for phone: ${formattedPhone}`);
-            return JSON.stringify({ error: `Customer not found for phone ${formattedPhone}. Register first.` });
+            return JSON.stringify({
+                error: `Cliente não encontrado para o telefone ${formattedPhone}. Registre primeiro com register_customer.`
+            });
         }
 
-        // 2. Calculate Total & Validate Items
-        let total = 0;
+        log(`Customer found: ID=${customer.id}, Name=${customer.name}, Phone=${customer.phone}`);
+
+        // 2. Calcular taxa de entrega
+        let deliveryFee = 0;
+        let deliveryZone = null;
+
+        if (deliveryType === 'delivery') {
+            const cepToUse = cep || customer.cep;
+            if (cepToUse) {
+                const feeResult = await this.calculateDeliveryFee(cepToUse);
+
+                if (feeResult.error) {
+                    log(`Delivery fee calculation error: ${feeResult.error}`);
+                    return JSON.stringify({
+                        error: feeResult.error,
+                        suggestion: 'Tente outro CEP ou escolha retirada no local.'
+                    });
+                }
+
+                deliveryFee = feeResult.fee || 0;
+                deliveryZone = feeResult.zone;
+                log(`Delivery fee calculated: ${deliveryFee} for zone: ${deliveryZone}`);
+            } else {
+                log('No CEP provided for delivery, fee = 0');
+            }
+        }
+
+        // 3. Calcular total
+        let subtotal = 0;
         const orderItemsData = [];
 
         for (const item of items) {
-            const { data: product } = await supabase
-                .from('products')
-                .select('*')
-                .eq('id', item.productId)
-                .single();
+            log(`Processing item: ${JSON.stringify(item)}`);
+            let product = null;
 
-            if (!product) continue;
+            // 1. Try to find by ID if it looks like a UUID
+            if (item.productId && typeof item.productId === 'string' && item.productId.length > 20) {
+                const { data } = await supabase
+                    .from('products')
+                    .select('*')
+                    .eq('id', item.productId)
+                    .single();
+                product = data;
+            }
 
-            const itemTotal = product.price * item.quantity;
-            total += itemTotal;
+            // 2. If not found, try by Name (fuzzy match)
+            if (!product) {
+                // Sometimes AI passes the name in productId or we just need to search by name
+                const searchTerm = item.productName || item.productId;
+                log(`Looking up product by name: ${searchTerm}`);
+
+                if (typeof searchTerm === 'string') {
+                    const { data } = await supabase
+                        .from('products')
+                        .select('*')
+                        .ilike('name', `%${searchTerm}%`)
+                        .eq('is_available', true)
+                        .limit(1);
+
+                    if (data && data.length > 0) {
+                        product = data[0];
+                        log(`Product found by name: ${product.name} (ID: ${product.id})`);
+                    } else {
+                        log(`Product NOT found by name: ${searchTerm}`);
+                    }
+                }
+            }
+
+            if (!product) {
+                log(`Product not found: ${item.productId}`);
+                continue;
+            }
+
+            const quantity = parseInt(item.quantity) || 1;
+            const itemTotal = product.price * quantity;
+            subtotal += itemTotal;
 
             orderItemsData.push({
                 product_id: product.id,
                 product_name: product.name,
-                quantity: item.quantity,
+                quantity: quantity,
                 price: product.price,
-                modifiers: item.modifiers || [] // Store modifiers as JSON/Array
+                modifiers: item.modifiers || []
             });
         }
 
-        total += deliveryFee;
+        const total = subtotal + deliveryFee;
+        log(`Subtotal: ${subtotal}, Delivery Fee: ${deliveryFee}, Total: ${total}`);
+        log(`Collected ${orderItemsData.length} items for order`);
 
-        // 3. Create Order
+        // 4. Gerar order_number sequencial
+        const { data: lastOrder } = await supabase
+            .from('orders')
+            .select('order_number')
+            .order('order_number', { ascending: false })
+            .limit(1)
+            .single();
+
+        const orderNumber = (lastOrder?.order_number || 0) + 1;
+        log(`Generated order number: ${orderNumber}`);
+
+        // 5. Criar pedido
         const { data: order, error: orderError } = await supabase
             .from('orders')
             .insert([{
+                order_number: orderNumber,
                 customer_id: customer.id,
                 customer_name: customer.name,
                 customer_phone: customer.phone,
                 customer_address: customer.address,
+                customer_cep: cep || customer.cep,
                 total: total,
-                payment_method: paymentMethod,
+                payment_method: paymentMethod || 'Não informado',
                 change_for: changeFor,
                 delivery_fee: deliveryFee,
+                delivery_type: deliveryType,
                 status: 'Pendente'
             }])
             .select()
@@ -185,36 +381,130 @@ class AIService {
             return JSON.stringify({ error: orderError.message });
         }
 
-        // 4. Insert Order Items
+        // 6. Inserir itens
         const itemsToInsert = orderItemsData.map(item => ({
             ...item,
             order_id: order.id
         }));
 
+        log(`Attempting to insert ${itemsToInsert.length} items: ${JSON.stringify(itemsToInsert)}`);
+
         const { error: itemsError } = await supabase
             .from('order_items')
             .insert(itemsToInsert);
 
-        if (itemsError) return JSON.stringify({ error: 'Order created but items failed: ' + itemsError.message });
+        if (itemsError) {
+            log(`Error inserting items: ${itemsError.message}`);
+            return JSON.stringify({ error: 'Pedido criado mas itens falharam: ' + itemsError.message });
+        }
 
-        // 5. Notify Admin (Optional: via WebSocket or just rely on polling)
-        log(`Order created successfully: ${order.id}`);
-        return JSON.stringify({ success: true, orderId: order.id, total, message: 'Order placed successfully' });
+        log(`Successfully inserted ${itemsToInsert.length} items`);
+
+        log(`Order created successfully: ${order.id}, number: ${orderNumber}`);
+
+        // 7. Retornar sucesso com link de acompanhamento
+        return JSON.stringify({
+            success: true,
+            orderId: order.id,
+            orderNumber: orderNumber,
+            subtotal: subtotal.toFixed(2),
+            deliveryFee: deliveryFee.toFixed(2),
+            total: total.toFixed(2),
+            deliveryZone: deliveryZone,
+            trackingLink: `/order/${order.id}`,
+            message: `Pedido #${orderNumber} criado com sucesso!`
+        });
+    }
+
+    async addToCart({ items }) {
+        const fs = require('fs');
+        const path = require('path');
+        const logFile = path.join(__dirname, '../debug_memory.log');
+        const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
+
+        log(`Tool called: addToCart. Items: ${JSON.stringify(items)}`);
+
+        const foundItems = [];
+        const notFoundItems = [];
+
+        for (const item of items) {
+            const searchTerm = item.productName;
+            let product = null;
+
+            if (searchTerm) {
+                const { data } = await supabase
+                    .from('products')
+                    .select('*')
+                    .ilike('name', `%${searchTerm}%`)
+                    .eq('is_available', true)
+                    .limit(1);
+
+                if (data && data.length > 0) {
+                    product = data[0];
+                }
+            }
+
+            if (product) {
+                foundItems.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    quantity: item.quantity || 1,
+                    observation: item.observation,
+                    image_url: product.image_url
+                });
+            } else {
+                notFoundItems.push(item.productName);
+            }
+        }
+
+        return JSON.stringify({
+            success: true,
+            action: 'add_to_cart',
+            items: foundItems,
+            notFound: notFoundItems,
+            message: foundItems.length > 0
+                ? `Adicionei ${foundItems.length} itens ao seu carrinho! Você pode finalizar o pedido agora.`
+                : 'Não encontrei os itens solicitados.'
+        });
     }
 
     async checkOrderStatus({ orderId }) {
         console.log('Tool called: checkOrderStatus', { orderId });
-        const { data: order, error } = await supabase
+
+        // Try to find by UUID first
+        let { data: order, error } = await supabase
             .from('orders')
-            .select('status, total, created_at')
+            .select('status, total, created_at, order_number')
             .eq('id', orderId)
             .single();
 
-        if (error) return JSON.stringify({ error: 'Order not found' });
-        return JSON.stringify(order);
-    }
+        if (error) {
+            // Fallback: try to find by order_number (if input is a number)
+            if (!isNaN(orderId)) {
+                const { data: orderByNum, error: numError } = await supabase
+                    .from('orders')
+                    .select('status, total, created_at, order_number')
+                    .eq('order_number', orderId)
+                    .single();
 
-    // --- MEMORY & SCHEDULE HELPERS ---
+                if (orderByNum) {
+                    order = orderByNum;
+                    error = null;
+                }
+            }
+        }
+
+        if (error || !order) return JSON.stringify({ error: 'Pedido não encontrado. Verifique o número.' });
+
+        return JSON.stringify({
+            status: order.status,
+            total: order.total,
+            orderNumber: order.order_number,
+            createdAt: order.created_at,
+            message: `O pedido #${order.order_number} está com status: ${order.status}`
+        });
+    }
 
     async getHistory(phone) {
         const fs = require('fs');
@@ -262,7 +552,6 @@ class AIService {
 
         const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const now = new Date();
-        // Force Brazil Timezone
         const brazilDateStr = now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' });
         const brazilDate = new Date(brazilDateStr);
 
@@ -285,7 +574,6 @@ class AIService {
                 const startTime = startH * 60 + startM;
                 const endTime = endH * 60 + endM;
 
-                // Handle overnight intervals (e.g. 18:00 to 02:00)
                 if (endTime < startTime) {
                     if (currentTime >= startTime || currentTime <= endTime) return { isOpen: true };
                 } else {
@@ -317,7 +605,6 @@ class AIService {
 
             console.log('Transcription:', transcription.text);
 
-            // Cleanup
             fs.unlinkSync(tempFilePath);
 
             return transcription.text;
@@ -338,7 +625,6 @@ class AIService {
         let userMessage = conversation || messageData.text?.message;
         const userPhone = remoteJid.replace('@s.whatsapp.net', '').replace('@lid', '');
 
-        // Handle Audio
         if (audioMessage || base64) {
             console.log('Audio message detected');
             if (base64) {
@@ -360,13 +646,10 @@ class AIService {
         console.log(`User Message (${userPhone}): ${userMessage}`);
 
         try {
-            // 1. Save User Message
             await this.saveMessage(userPhone, 'user', userMessage);
 
-            // 2. Get History
             const history = await this.getHistory(userPhone);
 
-            // 3. Check Opening Hours
             const { isOpen } = this.checkOpeningHours();
             const systemPrompt = `
 ${this.settings.system_prompt || 'Você é um assistente virtual.'}
@@ -376,21 +659,69 @@ ${!isOpen ? 'AVISO: O estabelecimento está FECHADO agora. Avise o cliente e dig
 CONTEXTO DO CLIENTE:
 Nome: ${pushName || 'Cliente'}
 Telefone: ${userPhone}
-Histórico de Pedidos: (Consultar se necessário)
 
-INSTRUÇÕES:
-- Seja educado e prestativo.
-- Use emojis.
-- AO MOSTRAR O CARDÁPIO: Organize por categorias, use negrito para nomes (*Nome*), e mostre o preço (R$ XX,XX). Não mande JSON cru.
-- AO CRIAR PEDIDO:
-  1. Pergunte se é **Entrega** ou **Retirada**.
-  2. Se for **Entrega**: Pergunte o **Endereço Completo** e o **CEP**.
-  3. Se for **Retirada**: Avise que o endereço é Rua Exemplo, 123.
-  4. Confirme o valor total e a forma de pagamento.
-  5. SÓ DEPOIS de ter tudo isso, chame `create_order`.
-  6. Forneça o link de acompanhamento no formato: [Acompanhar Pedido](/tracking/ID_DO_PEDIDO).
-- Para ver status, use check_order_status.
-- Se o cliente mandar o número de telefone, use register_customer para salvar.
+FLUXO DE PEDIDO COMPLETO:
+
+1. **VERIFICAR CLIENTE**
+   - Primeiro, chame \`register_customer\` com o telefone do cliente
+   - Se cliente já existe (customerExists: true), use os dados salvos (savedData)
+   - Confirme com o cliente se os dados estão corretos
+   - Se dados mudaram, atualize chamando register_customer novamente
+
+2. **COLETAR ITENS**
+   - Mostre o cardápio com \`get_menu\`
+   - Organize por categorias, use negrito para nomes (*Nome*), mostre preço (R$ XX,XX)
+   - Anote os itens que o cliente quer com quantidade
+
+3. **TIPO DE ENTREGA**
+   - Pergunte: "Vai ser entrega ou retirada?"
+   - Se RETIRADA (pickup): pule para pagamento
+   - Se ENTREGA (delivery): continue para próximo passo
+
+4. **ENDEREÇO E CEP (apenas para entrega)**
+   - Se cliente já tem CEP salvo, confirme: "Vou usar o endereço salvo: [endereço]. Está correto?"
+   - Se não tem ou mudou, peça:
+     * CEP completo (00000-000)
+     * Endereço completo (rua, número, complemento)
+   - Atualize com \`register_customer\` se necessário
+
+5. **PAGAMENTO**
+   - Pergunte: "Como vai pagar? PIX, Cartão ou Dinheiro?"
+   - Se Dinheiro: "Precisa de troco para quanto?"
+
+6. **CRIAR PEDIDO**
+   - Chame \`create_order\` com TODOS os dados:
+     * items: array com productId e quantity
+     * paymentMethod: "PIX", "Cartão" ou "Dinheiro"
+     * changeFor: valor do troco (se Dinheiro)
+     * cep: CEP do cliente (se entrega)
+     * deliveryType: "delivery" ou "pickup"
+   - O sistema calculará o frete automaticamente pelo CEP
+   - Número do pedido será gerado automaticamente
+
+7. **CONFIRMAÇÃO**
+   - Mostre o resumo completo:
+     * Itens pedidos
+     * Subtotal: R$ XX,XX
+     * Taxa de entrega: R$ XX,XX (se aplicável)
+     * Total: R$ XX,XX
+   - Forneça o link de acompanhamento: "Acompanhe seu pedido aqui: [Link](${process.env.FRONTEND_URL || 'http://localhost:5173'}/order/ID)"
+   - Agradeça e deseje bom apetite! 😋
+
+REGRAS IMPORTANTES:
+- SEMPRE use dados salvos do cliente quando disponíveis
+- O frete é calculado AUTOMATICAMENTE pelo CEP - não invente valores
+- Se CEP estiver fora da área, informe o erro e sugira retirada
+- Link de acompanhamento SEMPRE no formato: /order/ID (não /tracking/ID)
+- Seja educado, prestativo e use emojis
+- Confirme cada etapa antes de prosseguir
+
+CASO ESPECIAL (WEB CHAT):
+- Se o telefone do cliente começar com "web_", isso é um chat anônimo no site.
+- OBRIGATÓRIO: Pergunte o nome do cliente.
+- NÃO crie o pedido diretamente com \`create_order\`.
+- EM VEZ DISSO, use a função \`add_to_cart\` para adicionar os itens ao carrinho do cliente.
+- Diga ao cliente que os itens foram adicionados ao carrinho e que ele pode finalizar o pedido clicando no botão de carrinho.
 `;
 
             const messages = [
@@ -399,7 +730,6 @@ INSTRUÇÕES:
                 { role: "user", content: userMessage }
             ];
 
-            // 4. Define Tools
             const tools = [
                 {
                     type: "function",
@@ -430,28 +760,70 @@ INSTRUÇÕES:
                     type: "function",
                     function: {
                         name: "create_order",
-                        description: "Cria um novo pedido.",
+                        description: "Cria um novo pedido. O sistema calcula o frete automaticamente se CEP for fornecido.",
                         parameters: {
                             type: "object",
                             properties: {
-                                customerPhone: { type: "string" },
+                                customerPhone: { type: "string", description: "Telefone do cliente" },
                                 items: {
                                     type: "array",
+                                    description: "Lista de itens do pedido",
                                     items: {
                                         type: "object",
                                         properties: {
-                                            productId: { type: "integer" },
-                                            quantity: { type: "integer" },
-                                            modifiers: { type: "array", items: { type: "string" } }
+                                            productId: { type: "integer", description: "ID do produto" },
+                                            quantity: { type: "integer", description: "Quantidade" },
+                                            modifiers: { type: "array", items: { type: "string" }, description: "Modificadores opcionais" }
                                         },
                                         required: ["productId", "quantity"]
                                     }
                                 },
-                                paymentMethod: { type: "string", enum: ["Dinheiro", "Pix", "Cartão"] },
-                                changeFor: { type: "number" },
-                                deliveryFee: { type: "number" }
+                                paymentMethod: {
+                                    type: "string",
+                                    enum: ["Dinheiro", "PIX", "Cartão"],
+                                    description: "Forma de pagamento"
+                                },
+                                changeFor: {
+                                    type: "number",
+                                    description: "Valor para troco (apenas se pagamento for Dinheiro)"
+                                },
+                                cep: {
+                                    type: "string",
+                                    description: "CEP para cálculo automático de frete (formato: 00000-000). Obrigatório para entrega."
+                                },
+                                deliveryType: {
+                                    type: "string",
+                                    enum: ["delivery", "pickup"],
+                                    description: "Tipo: 'delivery' (entrega) ou 'pickup' (retirada)"
+                                }
                             },
-                            required: ["customerPhone", "items"]
+                            required: ["customerPhone", "items", "paymentMethod"]
+                        }
+                    }
+                },
+                {
+                    type: "function",
+                    function: {
+                        name: "add_to_cart",
+                        description: "Adiciona itens ao carrinho de compras (Apenas para Web Chat).",
+                        parameters: {
+                            type: "object",
+                            properties: {
+                                items: {
+                                    type: "array",
+                                    description: "Lista de itens para adicionar",
+                                    items: {
+                                        type: "object",
+                                        properties: {
+                                            productName: { type: "string", description: "Nome do produto (ex: Pizza Calabresa)" },
+                                            quantity: { type: "integer", description: "Quantidade" },
+                                            observation: { type: "string", description: "Observações (ex: sem cebola)" }
+                                        },
+                                        required: ["productName", "quantity"]
+                                    }
+                                }
+                            },
+                            required: ["items"]
                         }
                     }
                 },
@@ -488,9 +860,10 @@ INSTRUÇÕES:
             const responseMessage = completion.choices[0].message;
             log(`OpenAI response received. Tool calls: ${responseMessage.tool_calls ? responseMessage.tool_calls.length : 0}`);
 
-            // Handle Tool Calls
             if (responseMessage.tool_calls) {
                 messages.push(responseMessage);
+
+                let cartActionData = null;
 
                 for (const toolCall of responseMessage.tool_calls) {
                     const functionName = toolCall.function.name;
@@ -503,13 +876,19 @@ INSTRUÇÕES:
                     if (functionName === 'get_menu') {
                         functionResult = await this.getMenu();
                     } else if (functionName === 'register_customer') {
-                        functionArgs.phone = userPhone;
+                        // Only force-override phone if on WhatsApp (trusted sender) or if missing
+                        if (channel === 'whatsapp' || !functionArgs.phone) {
+                            functionArgs.phone = userPhone;
+                        }
                         functionResult = await this.registerCustomer(functionArgs);
                     } else if (functionName === 'create_order') {
-                        // Do NOT override customerPhone with userPhone (which is web_xxx)
-                        // Let the AI pass the phone number it collected from the user
-                        if (!functionArgs.customerPhone) functionArgs.customerPhone = userPhone; // Fallback only
+                        if (!functionArgs.customerPhone) functionArgs.customerPhone = userPhone;
                         functionResult = await this.createOrder(functionArgs);
+                    } else if (functionName === 'add_to_cart') {
+                        functionResult = await this.addToCart(functionArgs);
+                        try {
+                            cartActionData = JSON.parse(functionResult);
+                        } catch (e) { }
                     } else if (functionName === 'check_order_status') {
                         functionResult = await this.checkOrderStatus(functionArgs);
                     }
@@ -529,7 +908,7 @@ INSTRUÇÕES:
 
                 const finalContent = secondResponse.choices[0].message.content;
                 await this.saveMessage(userPhone, 'assistant', finalContent);
-                const sentMsg = await this.sendMessage(remoteJid, finalContent, channel);
+                const sentMsg = await this.sendMessage(remoteJid, finalContent, channel, cartActionData);
                 if (sentMsg) responses.push(sentMsg);
                 log(`Sent final response (after tools).`);
 
@@ -553,11 +932,16 @@ INSTRUÇÕES:
         return responses;
     }
 
-    async sendMessage(remoteJid, text, channel = 'whatsapp') {
+    async sendMessage(remoteJid, text, channel = 'whatsapp', extraData = null) {
         if (!this.settings) await this.loadSettings();
 
         if (channel === 'web') {
-            return { text, role: 'assistant', timestamp: new Date().toISOString() };
+            return {
+                text,
+                role: 'assistant',
+                timestamp: new Date().toISOString(),
+                action: extraData // Pass the action data to frontend
+            };
         }
 
         try {
@@ -598,7 +982,6 @@ INSTRUÇÕES:
 
         const remoteJid = `${phone}@s.whatsapp.net`;
 
-        // Save to history so Web Chat can see it via polling
         await this.saveMessage(phone, 'assistant', message);
 
         await this.sendMessage(remoteJid, message);

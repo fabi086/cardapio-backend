@@ -14,82 +14,48 @@ const CartModal = () => {
         isCartOpen,
         setIsCartOpen,
         cartTotal,
+        subtotal,
+        discountAmount,
+        appliedCoupon,
+        applyCoupon,
+        removeCoupon
     } = useCart();
 
     const { settings } = useBusinessSettings();
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-    const [cep, setCep] = useState('');
-    const [deliveryFee, setDeliveryFee] = useState(null);
-    const [deliveryError, setDeliveryError] = useState('');
-    const [isValidating, setIsValidating] = useState(false);
-    const [zones, setZones] = useState([]);
-    const [bypassCep, setBypassCep] = useState(false);
 
-    useEffect(() => {
-        if (isCartOpen) {
-            fetchZones();
-        }
-    }, [isCartOpen]);
+    const [couponCode, setCouponCode] = useState('');
+    const [couponError, setCouponError] = useState('');
+    const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
-    const fetchZones = async () => {
-        const { data } = await supabase.from('delivery_zones').select('*');
-        setZones(data || []);
-    };
+    const handleApplyCoupon = async () => {
+        if (!couponCode) return;
+        setIsValidatingCoupon(true);
+        setCouponError('');
 
-    const handleCepChange = (e) => {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length > 5) value = value.replace(/^(\d{5})(\d)/, '$1-$2');
-        setCep(value);
-        setDeliveryError('');
-        setDeliveryFee(null);
-        setBypassCep(false);
-    };
+        try {
+            const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+            const res = await fetch(`${API_URL}/api/coupons/validate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: couponCode, orderTotal: subtotal })
+            });
+            const data = await res.json();
 
-    const validateCep = () => {
-        if (cep.length < 9) {
-            setDeliveryError('CEP inválido');
-            return;
-        }
-
-        setIsValidating(true);
-        setDeliveryError('');
-
-        const cleanCep = parseInt(cep.replace('-', ''));
-        let foundZone = null;
-
-        for (const zone of zones) {
-            if (zone.cep_start && zone.cep_end) {
-                const start = parseInt(zone.cep_start.replace('-', ''));
-                const end = parseInt(zone.cep_end.replace('-', ''));
-
-                if (cleanCep >= start && cleanCep <= end) {
-                    // Check excluded CEPs
-                    if (zone.excluded_ceps) {
-                        const excluded = zone.excluded_ceps.split(',').map(c => parseInt(c.trim().replace('-', '')));
-                        if (excluded.includes(cleanCep)) continue;
-                    }
-                    foundZone = zone;
-                    break;
-                }
+            if (res.ok) {
+                applyCoupon(data);
+            } else {
+                setCouponError(data.error || 'Erro ao validar cupom');
             }
-        }
-
-        setIsValidating(false);
-
-        if (foundZone) {
-            setDeliveryFee(foundZone.fee);
-        } else {
-            setDeliveryError('Não entregamos neste CEP. Entre em contato.');
+        } catch (error) {
+            console.error('Error validating coupon:', error);
+            setCouponError('Erro de conexão');
+        } finally {
+            setIsValidatingCoupon(false);
         }
     };
 
-    const handleBypass = () => {
-        setBypassCep(true);
-        setDeliveryFee(0); // Or handle as "To be calculated"
-        setDeliveryError('');
-    };
 
-    const canCheckout = bypassCep || deliveryFee !== null;
 
     if (!isCartOpen) return null;
 
@@ -207,71 +173,66 @@ const CartModal = () => {
                     {cartItems.length > 0 && (
                         <div className="p-5 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/50 space-y-4">
 
-                            {/* CEP Calculation */}
+                            {/* Coupon Section */}
                             <div className="bg-white dark:bg-stone-800 p-4 rounded-xl border border-stone-200 dark:border-stone-700">
-                                <label className="block text-xs font-bold text-stone-500 uppercase mb-2">Calcular Entrega</label>
-                                <div className="flex gap-2 mb-2">
+                                <label className="block text-xs font-bold text-stone-500 uppercase mb-2">Cupom de Desconto</label>
+                                <div className="flex gap-2">
                                     <input
                                         type="text"
-                                        value={cep}
-                                        onChange={handleCepChange}
-                                        maxLength={9}
-                                        placeholder="00000-000"
-                                        className="flex-1 p-2 rounded border border-stone-300 dark:border-stone-600 bg-stone-50 dark:bg-stone-900 text-sm outline-none focus:border-italian-red"
+                                        value={couponCode}
+                                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                        placeholder="CÓDIGO"
+                                        disabled={!!appliedCoupon}
+                                        className="flex-1 p-2 rounded border border-stone-300 dark:border-stone-600 bg-stone-50 dark:bg-stone-900 text-sm outline-none focus:border-italian-red uppercase"
                                     />
-                                    <button
-                                        onClick={validateCep}
-                                        disabled={cep.length < 9 || isValidating}
-                                        className="bg-stone-800 text-white px-4 py-2 rounded font-bold text-sm disabled:opacity-50"
-                                    >
-                                        {isValidating ? '...' : 'OK'}
-                                    </button>
-                                </div>
-
-                                {deliveryError && (
-                                    <div className="flex flex-col gap-2">
-                                        <p className="text-red-500 text-xs flex items-center gap-1"><AlertCircle size={12} /> {deliveryError}</p>
-                                        <button onClick={handleBypass} className="text-xs text-blue-500 underline text-left">
-                                            Não sei meu CEP / Combinar com atendente
+                                    {appliedCoupon ? (
+                                        <button
+                                            onClick={() => {
+                                                removeCoupon();
+                                                setCouponCode('');
+                                            }}
+                                            className="bg-red-100 text-red-600 px-4 py-2 rounded font-bold text-sm hover:bg-red-200"
+                                        >
+                                            Remover
                                         </button>
-                                    </div>
+                                    ) : (
+                                        <button
+                                            onClick={handleApplyCoupon}
+                                            disabled={!couponCode || isValidatingCoupon}
+                                            className="bg-stone-800 text-white px-4 py-2 rounded font-bold text-sm disabled:opacity-50"
+                                        >
+                                            {isValidatingCoupon ? '...' : 'Aplicar'}
+                                        </button>
+                                    )}
+                                </div>
+                                {couponError && (
+                                    <p className="text-red-500 text-xs mt-2 flex items-center gap-1"><AlertCircle size={12} /> {couponError}</p>
                                 )}
-
-                                {deliveryFee !== null && (
-                                    <div className="flex justify-between items-center text-sm text-green-600 font-bold mt-2">
-                                        <span className="flex items-center gap-1"><CheckCircle size={14} /> Entrega</span>
-                                        <span>R$ {deliveryFee.toFixed(2)}</span>
-                                    </div>
-                                )}
-
-                                {bypassCep && (
-                                    <div className="text-xs text-orange-500 mt-2 font-medium">
-                                        * Taxa de entrega será combinada pelo WhatsApp.
-                                    </div>
+                                {appliedCoupon && (
+                                    <p className="text-green-600 text-xs mt-2 flex items-center gap-1"><CheckCircle size={12} /> Cupom aplicado com sucesso!</p>
                                 )}
                             </div>
 
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center">
                                     <span className="text-stone-600 dark:text-stone-400">Subtotal</span>
-                                    <span className="font-bold text-stone-800 dark:text-white">R$ {cartTotal.toFixed(2)}</span>
+                                    <span className="font-bold text-stone-800 dark:text-white">R$ {subtotal.toFixed(2)}</span>
                                 </div>
-                                {deliveryFee !== null && (
+                                {appliedCoupon && (
                                     <div className="flex justify-between items-center text-green-600">
-                                        <span>Taxa de Entrega</span>
-                                        <span className="font-bold">+ R$ {deliveryFee.toFixed(2)}</span>
+                                        <span>Desconto ({appliedCoupon.code})</span>
+                                        <span className="font-bold">- R$ {discountAmount.toFixed(2)}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between items-center text-xl font-bold text-stone-800 dark:text-white pt-2 border-t border-stone-200 dark:border-stone-700">
                                     <span>Total</span>
-                                    <span>R$ {(cartTotal + (deliveryFee || 0)).toFixed(2)}</span>
+                                    <span>R$ {cartTotal.toFixed(2)}</span>
                                 </div>
                             </div>
 
                             <button
-                                className="w-full text-white py-3 rounded-xl font-bold text-lg shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full text-white py-3 rounded-xl font-bold text-lg shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]"
                                 onClick={() => setIsCheckoutOpen(true)}
-                                disabled={!canCheckout}
                                 style={{ backgroundColor: settings.button_color }}
                             >
                                 Finalizar Pedido
@@ -284,9 +245,6 @@ const CartModal = () => {
             <CheckoutModal
                 isOpen={isCheckoutOpen}
                 onClose={() => setIsCheckoutOpen(false)}
-                deliveryFee={deliveryFee}
-                bypassCep={bypassCep}
-                cep={cep}
             />
         </AnimatePresence>
     );

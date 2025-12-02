@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { LayoutDashboard, LogOut, Settings, UtensilsCrossed, Clock, Sun, Moon, Users, Bot, Menu, X } from 'lucide-react';
+import { LayoutDashboard, LogOut, Settings, UtensilsCrossed, Clock, Sun, Moon, Users, Bot, Menu, X, Tag } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 const AdminLayout = () => {
@@ -60,6 +60,7 @@ const AdminLayout = () => {
         { icon: UtensilsCrossed, label: 'Produtos', path: '/admin/products' },
         { icon: UtensilsCrossed, label: 'Categorias', path: '/admin/categories' },
         { icon: LayoutDashboard, label: 'Banners', path: '/admin/banners' },
+        { icon: Tag, label: 'Cupons', path: '/admin/coupons' },
         { icon: Bot, label: 'Agente IA', path: '/admin/ai-agent' },
         { icon: Settings, label: 'Configurações', path: '/admin/settings' },
     ];

@@ -69,19 +69,51 @@ export const CartProvider = ({ children }) => {
         setCartItems([]);
     };
 
-    const cartTotal = cartItems.reduce(
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+
+    const applyCoupon = (coupon) => {
+        setAppliedCoupon(coupon);
+    };
+
+    const removeCoupon = () => {
+        setAppliedCoupon(null);
+    };
+
+    const subtotal = cartItems.reduce(
         (total, item) => total + (item.finalPrice || item.price) * item.quantity,
         0
     );
+
+    let discountAmount = 0;
+    if (appliedCoupon) {
+        if (appliedCoupon.discount_type === 'percentage') {
+            discountAmount = (subtotal * appliedCoupon.discount_value) / 100;
+        } else {
+            discountAmount = Number(appliedCoupon.discount_value);
+        }
+    }
+
+    const cartTotal = Math.max(0, subtotal - discountAmount);
 
     const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
 
     const submitOrder = async (customerData) => {
         try {
-            // 1. Create Order
+            // 1. Gerar order_number sequencial
+            const { data: lastOrder } = await supabase
+                .from('orders')
+                .select('order_number')
+                .order('order_number', { ascending: false })
+                .limit(1)
+                .single();
+
+            const orderNumber = (lastOrder?.order_number || 0) + 1;
+
+            // 2. Create Order
             const { data: order, error: orderError } = await supabase
                 .from('orders')
                 .insert([{
+                    order_number: orderNumber,
                     customer_name: customerData.name,
                     customer_phone: customerData.phone,
                     customer_address: customerData.address,
@@ -91,17 +123,19 @@ export const CartProvider = ({ children }) => {
                     change_for: customerData.changeFor,
                     delivery_fee: customerData.deliveryFee || 0,
                     total: cartTotal + (customerData.deliveryFee || 0),
-                    status: 'pending'
+                    discount: discountAmount,
+                    coupon_code: appliedCoupon ? appliedCoupon.code : null,
+                    status: 'Pendente'
                 }])
                 .select()
                 .single();
 
             if (orderError) throw orderError;
 
-            // 2. Create Order Items
+            // 3. Create Order Items
             const itemsToInsert = cartItems.map(item => ({
                 order_id: order.id,
-                product_id: item.id, // Assuming item.id is the UUID from products table
+                product_id: item.id,
                 product_name: item.name,
                 quantity: item.quantity,
                 price: item.finalPrice || item.price,
@@ -114,9 +148,13 @@ export const CartProvider = ({ children }) => {
 
             if (itemsError) throw itemsError;
 
-            // 3. Optional: Send to WhatsApp (User can still do this if they want, or we do it automatically)
-            // For now, let's just return the order ID so the UI can redirect
+            // 4. Update Coupon Usage
+            if (appliedCoupon) {
+                await supabase.rpc('increment_coupon_usage', { coupon_id: appliedCoupon.id });
+            }
+
             clearCart();
+            setAppliedCoupon(null);
             return { ...order, items: itemsToInsert };
 
         } catch (error) {
@@ -136,6 +174,11 @@ export const CartProvider = ({ children }) => {
                 isCartOpen,
                 setIsCartOpen,
                 cartTotal,
+                subtotal,
+                discountAmount,
+                appliedCoupon,
+                applyCoupon,
+                removeCoupon,
                 cartCount,
                 submitOrder,
             }}

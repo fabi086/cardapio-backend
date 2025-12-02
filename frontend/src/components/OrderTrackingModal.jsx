@@ -67,7 +67,7 @@ const OrderTrackingModal = ({ isOpen, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 sm:justify-end sm:pr-20 sm:pt-16">
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-32 px-4 sm:justify-end sm:pr-20 sm:pt-32">
             <div
                 onClick={onClose}
                 className="absolute inset-0 bg-black/20 backdrop-blur-[1px]"

@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Mic } from 'lucide-react';
+import { useCart } from '../context/CartContext';
 
 const ChatWidget = () => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
+    const { addToCart, setIsCartOpen: openCart } = useCart();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
         { role: 'assistant', text: 'Olá! Sou seu assistente virtual. Como posso ajudar?' }
@@ -32,7 +35,7 @@ const ChatWidget = () => {
         const pollInterval = setInterval(async () => {
             if (!userPhone) return;
             try {
-                const response = await fetch(`http://localhost:3001/api/ai/poll?userPhone=${userPhone}`);
+                const response = await fetch(`${API_URL}/api/ai/poll?userPhone=${userPhone}`);
                 const data = await response.json();
                 if (data.success && data.messages) {
                     const historyMessages = data.messages.map(m => ({
@@ -40,8 +43,6 @@ const ChatWidget = () => {
                         text: m.content
                     }));
 
-                    // Simple check to avoid unnecessary updates/loops if length is same
-                    // ideally we compare content, but for now length check + last message check is decent
                     if (historyMessages.length > 0) {
                         setMessages(prev => {
                             if (JSON.stringify(prev) !== JSON.stringify(historyMessages)) {
@@ -74,7 +75,7 @@ const ChatWidget = () => {
             };
 
             mediaRecorderRef.current.onstop = async () => {
-                const blob = new Blob(chunksRef.current, { type: 'audio/webm' }); // or audio/mp3 if supported
+                const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
                 const reader = new FileReader();
                 reader.readAsDataURL(blob);
                 reader.onloadend = async () => {
@@ -99,27 +100,40 @@ const ChatWidget = () => {
         }
     };
 
+    const processResponse = (data) => {
+        if (data.responses && data.responses.length > 0) {
+            const newMessages = data.responses.map(res => {
+                // Check for action
+                if (res.action && res.action.action === 'add_to_cart' && res.action.items) {
+                    console.log('Adding items to cart:', res.action.items);
+                    res.action.items.forEach(item => {
+                        addToCart(item, item.quantity);
+                    });
+                    openCart(true);
+                }
+                return {
+                    role: 'assistant',
+                    text: res.text
+                };
+            });
+            setMessages(prev => [...prev, ...newMessages]);
+        }
+    };
+
     const sendAudioMessage = async (base64Audio) => {
         const userMsg = { role: 'user', text: '🎤 Áudio enviado...' };
         setMessages(prev => [...prev, userMsg]);
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://localhost:3001/api/ai/chat', {
+            const response = await fetch(`${API_URL}/api/ai/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ audio: base64Audio, userPhone })
             });
 
             const data = await response.json();
-
-            if (data.responses && data.responses.length > 0) {
-                const newMessages = data.responses.map(res => ({
-                    role: 'assistant',
-                    text: res.text
-                }));
-                setMessages(prev => [...prev, ...newMessages]);
-            }
+            processResponse(data);
         } catch (error) {
             console.error('Error sending audio:', error);
             setMessages(prev => [...prev, { role: 'assistant', text: 'Erro ao enviar áudio.' }]);
@@ -137,21 +151,14 @@ const ChatWidget = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://localhost:3001/api/ai/chat', {
+            const response = await fetch(`${API_URL}/api/ai/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: userMsg.text, userPhone })
             });
 
             const data = await response.json();
-
-            if (data.responses && data.responses.length > 0) {
-                const newMessages = data.responses.map(res => ({
-                    role: 'assistant',
-                    text: res.text
-                }));
-                setMessages(prev => [...prev, ...newMessages]);
-            }
+            processResponse(data);
         } catch (error) {
             console.error('Error sending message:', error);
             setMessages(prev => [...prev, { role: 'assistant', text: 'Desculpe, tive um erro de conexão.' }]);
@@ -192,8 +199,11 @@ const ChatWidget = () => {
         return parts.length > 0 ? parts : text;
     };
 
+    // Hide on Admin pages
+    if (window.location.pathname.startsWith('/admin')) return null;
+
     return (
-        <div className="fixed bottom-4 right-4 z-50 font-sans">
+        <div className="fixed bottom-24 right-6 z-50 font-sans">
             {/* Chat Window */}
             {isOpen && (
                 <div className="bg-white rounded-lg shadow-xl w-80 h-96 flex flex-col mb-4 border border-gray-200 overflow-hidden animate-in slide-in-from-bottom-5">
@@ -279,7 +289,7 @@ const ChatWidget = () => {
                     className="bg-red-600 text-white p-3 rounded-full shadow-lg hover:bg-red-700 transition-transform hover:scale-110 flex items-center gap-2"
                 >
                     <MessageCircle size={24} />
-                    <span className="text-sm font-bold pr-1">Ajuda?</span>
+                    <span className="text-sm font-bold pr-1">Peça pelo Chat</span>
                 </button>
             )}
         </div>

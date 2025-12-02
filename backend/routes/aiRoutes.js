@@ -4,8 +4,9 @@ const aiService = require('../services/aiService');
 const { createClient } = require('@supabase/supabase-js');
 
 // Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL || 'YOUR_SUPABASE_URL';
-const supabaseKey = process.env.SUPABASE_KEY || 'YOUR_SUPABASE_KEY';
+// Initialize Supabase client
+const supabaseUrl = 'https://pluryiqzywfsovrcuhat.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsdXJ5aXF6eXdmc292cmN1aGF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNDc2NzMsImV4cCI6MjA3OTgyMzY3M30.qidjRUyB-_uspMzVAKEWGxuSHMCezAxZsHtN3IgxZqA';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Webhook for Evolution API
@@ -115,6 +116,7 @@ router.post('/notify-status', async (req, res) => {
 // Web Chat Endpoint
 router.post('/chat', async (req, res) => {
     try {
+        console.log('Chat endpoint called');
         const { message, audio, userPhone } = req.body;
 
         // Simulate a WhatsApp-like message structure for the service

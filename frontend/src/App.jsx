@@ -13,6 +13,7 @@ import Banners from './pages/admin/Banners';
 import OrderTracking from './pages/OrderTracking';
 import Orders from './pages/admin/Orders';
 import Customers from './pages/admin/Customers';
+import Coupons from './pages/admin/Coupons';
 import Settings from './pages/admin/Settings';
 import AIAgent from './pages/admin/AIAgent';
 
@@ -42,6 +43,7 @@ function App() {
               <Route path="products/:id" element={<ProductForm />} />
               <Route path="categories" element={<Categories />} />
               <Route path="banners" element={<Banners />} />
+              <Route path="coupons" element={<Coupons />} />
               <Route path="ai-agent" element={<AIAgent />} />
               <Route path="settings" element={<Settings />} />
             </Route>
