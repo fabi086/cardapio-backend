@@ -1,17 +1,16 @@
 {
-    {
-        "name": "cardapio-root",
-        "version": "1.0.0",
-        "scripts": {
-            "postinstall": "cd frontend && npm install",
-            "build": "cd frontend && npm run build"
-        },
-        "dependencies": {
-            "@supabase/supabase-js": "^2.46.1",
-            "axios": "^1.7.7",
-            "cors": "^2.8.5",
-            "dotenv": "^16.4.5",
-            "express": "^4.21.1",
-            "openai": "^4.68.1"
-        }
+    "name": "cardapio-root",
+    "version": "1.0.0",
+    "scripts": {
+        "postinstall": "cd frontend && npm install",
+        "build": "cd frontend && npm run build"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.46.1",
+        "axios": "^1.7.7",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.21.1",
+        "openai": "^4.68.1"
     }
+}
