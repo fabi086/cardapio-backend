@@ -328,7 +328,7 @@ class AIService {
                 continue;
             }
 
-            const quantity = parseInt(item.quantity) || 1;
+            const quantity = parseFloat(item.quantity) || 1;
             const itemTotal = product.price * quantity;
             subtotal += itemTotal;
 
@@ -711,23 +711,6 @@ FLUXO DE PEDIDO COMPLETO:
 REGRAS IMPORTANTES:
 - SEMPRE use dados salvos do cliente quando disponíveis
 - O frete é calculado AUTOMATICAMENTE pelo CEP - não invente valores
-- Se CEP estiver fora da área, informe o erro e sugira retirada
-- Link de acompanhamento SEMPRE no formato: /order/ID (não /tracking/ID)
-- Seja educado, prestativo e use emojis
-- Confirme cada etapa antes de prosseguir
-
-CASO ESPECIAL (WEB CHAT):
-- Se o telefone do cliente começar com "web_", isso é um chat anônimo no site.
-- OBRIGATÓRIO: Pergunte o nome do cliente.
-- NÃO crie o pedido diretamente com \`create_order\`.
-- EM VEZ DISSO, use a função \`add_to_cart\` para adicionar os itens ao carrinho do cliente.
-- Diga ao cliente que os itens foram adicionados ao carrinho e que ele pode finalizar o pedido clicando no botão de carrinho.
-`;
-
-            const messages = [
-                { role: "system", content: systemPrompt },
-                ...history.map(msg => ({ role: msg.role, content: msg.content })),
-                { role: "user", content: userMessage }
             ];
 
             const tools = [
@@ -772,7 +755,7 @@ CASO ESPECIAL (WEB CHAT):
                                         type: "object",
                                         properties: {
                                             productId: { type: "integer", description: "ID do produto" },
-                                            quantity: { type: "integer", description: "Quantidade" },
+                                            quantity: { type: "number", description: "Quantidade" },
                                             modifiers: { type: "array", items: { type: "string" }, description: "Modificadores opcionais" }
                                         },
                                         required: ["productId", "quantity"]
@@ -846,7 +829,8 @@ CASO ESPECIAL (WEB CHAT):
             const fs = require('fs');
             const path = require('path');
             const logFile = path.join(__dirname, '../debug_memory.log');
-            const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
+            const log = (msg) => { try { fs.appendFileSync(logFile, `${ new Date().toISOString()
+        } - ${ msg } \n`); } catch (e) { } };
 
             log(`Sending request to OpenAI...`);
 
@@ -858,7 +842,7 @@ CASO ESPECIAL (WEB CHAT):
             });
 
             const responseMessage = completion.choices[0].message;
-            log(`OpenAI response received. Tool calls: ${responseMessage.tool_calls ? responseMessage.tool_calls.length : 0}`);
+            log(`OpenAI response received.Tool calls: ${ responseMessage.tool_calls ? responseMessage.tool_calls.length : 0 } `);
 
             if (responseMessage.tool_calls) {
                 messages.push(responseMessage);
@@ -868,8 +852,8 @@ CASO ESPECIAL (WEB CHAT):
                 for (const toolCall of responseMessage.tool_calls) {
                     const functionName = toolCall.function.name;
                     const functionArgs = JSON.parse(toolCall.function.arguments);
-                    console.log(`Executing tool: ${functionName}`, functionArgs);
-                    log(`Executing tool: ${functionName}`);
+                    console.log(`Executing tool: ${ functionName } `, functionArgs);
+                    log(`Executing tool: ${ functionName } `);
 
                     let functionResult;
 
@@ -910,13 +894,13 @@ CASO ESPECIAL (WEB CHAT):
                 await this.saveMessage(userPhone, 'assistant', finalContent);
                 const sentMsg = await this.sendMessage(remoteJid, finalContent, channel, cartActionData);
                 if (sentMsg) responses.push(sentMsg);
-                log(`Sent final response (after tools).`);
+                log(`Sent final response(after tools).`);
 
             } else {
                 await this.saveMessage(userPhone, 'assistant', responseMessage.content);
                 const sentMsg = await this.sendMessage(remoteJid, responseMessage.content, channel);
                 if (sentMsg) responses.push(sentMsg);
-                log(`Sent final response (text only).`);
+                log(`Sent final response(text only).`);
             }
 
         } catch (error) {
@@ -925,7 +909,7 @@ CASO ESPECIAL (WEB CHAT):
             const path = require('path');
             const logFile = path.join(__dirname, '../debug_memory.log');
             try {
-                fs.appendFileSync(logFile, `${new Date().toISOString()} - ERROR: ${error.message}\n`);
+                fs.appendFileSync(logFile, `${ new Date().toISOString() } - ERROR: ${ error.message } \n`);
             } catch (e) { }
         }
 
@@ -946,7 +930,7 @@ CASO ESPECIAL (WEB CHAT):
 
         try {
             await axios.post(
-                `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`,
+                `${ this.settings.evolution_api_url } /message/sendText / ${ this.settings.instance_name } `,
                 {
                     number: remoteJid.replace('@s.whatsapp.net', ''),
                     text: text,
@@ -972,7 +956,7 @@ CASO ESPECIAL (WEB CHAT):
         await this.loadSettings();
         if (!this.settings) return;
 
-        let message = `🔔 * Atualização do Pedido #${orderId}*\n\nSeu pedido está: *${status}*`;
+        let message = `🔔 * Atualização do Pedido #${ orderId }*\n\nSeu pedido está: * ${ status }* `;
 
         if (status === 'Saiu para entrega') {
             message += '\n\n🛵 Nosso entregador já está a caminho!';
@@ -980,7 +964,7 @@ CASO ESPECIAL (WEB CHAT):
             message += '\n\n😋 Bom apetite! Esperamos que goste.';
         }
 
-        const remoteJid = `${phone}@s.whatsapp.net`;
+        const remoteJid = `${ phone } @s.whatsapp.net`;
 
         await this.saveMessage(phone, 'assistant', message);
 
