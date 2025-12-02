@@ -12,7 +12,17 @@ const path = require('path');
 const logFile = path.join(__dirname, 'debug_memory.log');
 try { fs.appendFileSync(logFile, `${new Date().toISOString()} - SERVER STARTING...\n`); } catch (e) { }
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3002',
+    'https://cardapio-frontend-u6gq.vercel.app', // Seu frontend na Vercel
+    /\.vercel\.app$/ // Qualquer subdomínio vercel.app (para previews)
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
