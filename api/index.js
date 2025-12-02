@@ -1,5 +1,4 @@
 const app = require('../backend/server');
 
-module.exports = (req, res) => {
-    app(req, res);
-};
+// Export as serverless function for Vercel
+module.exports = app;
