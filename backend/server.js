@@ -16,8 +16,8 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:3002',
-    'https://cardapio-frontend-u6gq.vercel.app', // Seu frontend na Vercel
-    /\.vercel\.app$/ // Qualquer subdomínio vercel.app (para previews)
+    'https://cardapio-frontend-u6qq.vercel.app', // URL Corrigida
+    /\.vercel\.app$/ // Fallback para qualquer subdomínio vercel
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
