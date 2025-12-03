@@ -711,7 +711,7 @@ FLUXO DE PEDIDO COMPLETO:
 REGRAS IMPORTANTES:
 - SEMPRE use dados salvos do cliente quando disponíveis
 - O frete é calculado AUTOMATICAMENTE pelo CEP - não invente valores
-            ];
+            `;
 
             const tools = [
                 {
@@ -829,8 +829,7 @@ REGRAS IMPORTANTES:
             const fs = require('fs');
             const path = require('path');
             const logFile = path.join(__dirname, '../debug_memory.log');
-            const log = (msg) => { try { fs.appendFileSync(logFile, `${ new Date().toISOString()
-        } - ${ msg } \n`); } catch (e) { } };
+            const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
             log(`Sending request to OpenAI...`);
 
@@ -842,7 +841,7 @@ REGRAS IMPORTANTES:
             });
 
             const responseMessage = completion.choices[0].message;
-            log(`OpenAI response received.Tool calls: ${ responseMessage.tool_calls ? responseMessage.tool_calls.length : 0 } `);
+            log(`OpenAI response received. Tool calls: ${responseMessage.tool_calls ? responseMessage.tool_calls.length : 0}`);
 
             if (responseMessage.tool_calls) {
                 messages.push(responseMessage);
@@ -852,8 +851,8 @@ REGRAS IMPORTANTES:
                 for (const toolCall of responseMessage.tool_calls) {
                     const functionName = toolCall.function.name;
                     const functionArgs = JSON.parse(toolCall.function.arguments);
-                    console.log(`Executing tool: ${ functionName } `, functionArgs);
-                    log(`Executing tool: ${ functionName } `);
+                    console.log(`Executing tool: ${functionName}`, functionArgs);
+                    log(`Executing tool: ${functionName}`);
 
                     let functionResult;
 
@@ -894,13 +893,13 @@ REGRAS IMPORTANTES:
                 await this.saveMessage(userPhone, 'assistant', finalContent);
                 const sentMsg = await this.sendMessage(remoteJid, finalContent, channel, cartActionData);
                 if (sentMsg) responses.push(sentMsg);
-                log(`Sent final response(after tools).`);
+                log(`Sent final response (after tools).`);
 
             } else {
                 await this.saveMessage(userPhone, 'assistant', responseMessage.content);
                 const sentMsg = await this.sendMessage(remoteJid, responseMessage.content, channel);
                 if (sentMsg) responses.push(sentMsg);
-                log(`Sent final response(text only).`);
+                log(`Sent final response (text only).`);
             }
 
         } catch (error) {
@@ -909,7 +908,7 @@ REGRAS IMPORTANTES:
             const path = require('path');
             const logFile = path.join(__dirname, '../debug_memory.log');
             try {
-                fs.appendFileSync(logFile, `${ new Date().toISOString() } - ERROR: ${ error.message } \n`);
+                fs.appendFileSync(logFile, `${new Date().toISOString()} - ERROR: ${error.message}\n`);
             } catch (e) { }
         }
 
@@ -930,7 +929,7 @@ REGRAS IMPORTANTES:
 
         try {
             await axios.post(
-                `${ this.settings.evolution_api_url } /message/sendText / ${ this.settings.instance_name } `,
+                `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`,
                 {
                     number: remoteJid.replace('@s.whatsapp.net', ''),
                     text: text,
@@ -956,7 +955,7 @@ REGRAS IMPORTANTES:
         await this.loadSettings();
         if (!this.settings) return;
 
-        let message = `🔔 * Atualização do Pedido #${ orderId }*\n\nSeu pedido está: * ${ status }* `;
+        let message = `🔔 *Atualização do Pedido #${orderId}*\n\nSeu pedido está: *${status}*`;
 
         if (status === 'Saiu para entrega') {
             message += '\n\n🛵 Nosso entregador já está a caminho!';
@@ -964,7 +963,7 @@ REGRAS IMPORTANTES:
             message += '\n\n😋 Bom apetite! Esperamos que goste.';
         }
 
-        const remoteJid = `${ phone } @s.whatsapp.net`;
+        const remoteJid = `${phone}@s.whatsapp.net`;
 
         await this.saveMessage(phone, 'assistant', message);
 
