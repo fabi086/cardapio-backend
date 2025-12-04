@@ -27,12 +27,25 @@ const OrderTracking = () => {
     const fetchOrder = async () => {
         try {
             const { data, error } = await supabase
-                .from('orders')
                 .select('*, order_items(*)')
                 .eq('id', id)
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                // If failed by ID, try by order_number (if it looks like a number)
+                if (!isNaN(id)) {
+                    const { data: dataByNum, error: errorByNum } = await supabase
+                        .from('orders')
+                        .select('*, order_items(*)')
+                        .eq('order_number', id)
+                        .single();
+
+                    if (errorByNum) throw errorByNum;
+                    setOrder(dataByNum);
+                    return;
+                }
+                throw error;
+            }
             setOrder(data);
         } catch (error) {
             console.error('Error fetching order:', error);
