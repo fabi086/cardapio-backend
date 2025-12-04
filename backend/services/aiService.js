@@ -910,6 +910,13 @@ REGRAS IMPORTANTES:
             try {
                 fs.appendFileSync(logFile, `${new Date().toISOString()} - ERROR: ${error.message}\n`);
             } catch (e) { }
+
+            // Return error to user
+            responses.push({
+                text: "⚠️ Erro ao processar mensagem: " + error.message + ". Verifique a API Key da OpenAI no painel.",
+                role: 'assistant',
+                timestamp: new Date().toISOString()
+            });
         }
 
         return responses;
