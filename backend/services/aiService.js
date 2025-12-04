@@ -49,7 +49,7 @@ class AIService {
     async getMenu() {
         const fs = require('fs');
         const path = require('path');
-        const logFile = path.join(__dirname, '../debug_memory.log');
+        const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
 
         const logToFile = (msg) => {
             try {
@@ -84,7 +84,7 @@ class AIService {
     async calculateDeliveryFee(cep) {
         const fs = require('fs');
         const path = require('path');
-        const logFile = path.join(__dirname, '../debug_memory.log');
+        const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
         const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
         log(`Calculating delivery fee for CEP: ${cep}`);
@@ -140,7 +140,7 @@ class AIService {
     async registerCustomer({ name, phone, address, cep, street, number, complement, neighborhood, city, state }) {
         const fs = require('fs');
         const path = require('path');
-        const logFile = path.join(__dirname, '../debug_memory.log');
+        const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
         const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
         log(`Tool called: registerCustomer. Input: ${JSON.stringify({ name, phone, address, cep, street, number, complement, neighborhood, city, state })}`);
@@ -228,7 +228,7 @@ class AIService {
     async createOrder({ customerPhone, items, paymentMethod, changeFor, cep, deliveryType = 'delivery' }) {
         const fs = require('fs');
         const path = require('path');
-        const logFile = path.join(__dirname, '../debug_memory.log');
+        const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
         const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
         log(`===== CREATE ORDER CALLED =====`);
@@ -419,7 +419,7 @@ class AIService {
     async addToCart({ items }) {
         const fs = require('fs');
         const path = require('path');
-        const logFile = path.join(__dirname, '../debug_memory.log');
+        const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
         const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
         log(`Tool called: addToCart. Items: ${JSON.stringify(items)}`);
@@ -509,7 +509,7 @@ class AIService {
     async getHistory(phone) {
         const fs = require('fs');
         const path = require('path');
-        const logFile = path.join(__dirname, '../debug_memory.log');
+        const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
         const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
         log(`Fetching history for ${phone}...`);
@@ -536,7 +536,7 @@ class AIService {
         if (!content) return;
         const fs = require('fs');
         const path = require('path');
-        const logFile = path.join(__dirname, '../debug_memory.log');
+        const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
         const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
         log(`Saving message for ${phone} (${role}): ${content.substring(0, 50)}...`);
@@ -828,7 +828,7 @@ REGRAS IMPORTANTES:
 
             const fs = require('fs');
             const path = require('path');
-            const logFile = path.join(__dirname, '../debug_memory.log');
+            const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
             const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
             log(`Sending request to OpenAI...`);
@@ -906,7 +906,7 @@ REGRAS IMPORTANTES:
             console.error('Error processing AI message:', error);
             const fs = require('fs');
             const path = require('path');
-            const logFile = path.join(__dirname, '../debug_memory.log');
+            const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
             try {
                 fs.appendFileSync(logFile, `${new Date().toISOString()} - ERROR: ${error.message}\n`);
             } catch (e) { }
