@@ -20,8 +20,12 @@ class AIService {
 
         if (data) {
             this.settings = data;
-            if (data.openai_api_key) {
-                this.openai = new OpenAI({ apiKey: data.openai_api_key });
+            const apiKey = data.openai_api_key ? data.openai_api_key.trim() : process.env.OPENAI_API_KEY;
+
+            if (apiKey) {
+                this.openai = new OpenAI({ apiKey: apiKey });
+            } else {
+                console.error('OpenAI API Key missing in settings and env vars');
             }
         }
         return this.settings;
