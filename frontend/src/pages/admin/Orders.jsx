@@ -314,7 +314,8 @@ const Orders = () => {
         { id: 'pending', label: 'Pendentes' },
         { id: 'approved', label: 'Aprovados' },
         { id: 'preparing', label: 'Preparando' },
-        { id: 'ready', label: 'Prontos' },
+        { id: 'ready', label: 'Pronto p/ Entrega' },
+        { id: 'out_for_delivery', label: 'Saiu p/ Entrega' },
         { id: 'delivered', label: 'Entregues' },
         { id: 'cancelled', label: 'Cancelados' },
     ];
@@ -463,18 +464,20 @@ const Orders = () => {
                                 value={order.status}
                                 onChange={(e) => updateStatus(order.id, e.target.value)}
                                 className={`text-xs font-bold uppercase py-1.5 px-2 rounded border-none outline-none cursor-pointer flex-1
-                                    ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : ''}
-                                    ${order.status === 'approved' ? 'bg-blue-100 text-blue-800' : ''}
-                                    ${order.status === 'preparing' ? 'bg-orange-100 text-orange-800' : ''}
-                                    ${order.status === 'ready' ? 'bg-green-100 text-green-800' : ''}
-                                    ${order.status === 'delivered' ? 'bg-stone-200 text-stone-800' : ''}
-                                    ${order.status === 'cancelled' ? 'bg-red-100 text-red-800' : ''}
+                                    ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200' : ''}
+                                    ${order.status === 'approved' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200' : ''}
+                                    ${order.status === 'preparing' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200' : ''}
+                                    ${order.status === 'ready' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' : ''}
+                                    ${order.status === 'out_for_delivery' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200' : ''}
+                                    ${order.status === 'delivered' ? 'bg-stone-200 text-stone-800 dark:bg-stone-700 dark:text-stone-200' : ''}
+                                    ${order.status === 'cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200' : ''}
                                 `}
                             >
                                 <option value="pending">Pendente</option>
                                 <option value="approved">Aprovado</option>
                                 <option value="preparing">Preparando</option>
-                                <option value="ready">Pronto</option>
+                                <option value="ready">Pronto para Entrega</option>
+                                <option value="out_for_delivery">Saiu para Entrega</option>
                                 <option value="delivered">Entregue</option>
                                 <option value="cancelled">Cancelado</option>
                             </select>

@@ -321,35 +321,51 @@ class AIService {
 
                     // 2. If not found, try splitting words (e.g. "Meia Calabresa" -> "Calabresa")
                     if (!data || data.length === 0) {
-                        const words = searchTerm.split(' ').filter(w => w.length > 3 && !['meia', 'pizza', 'com', 'sem'].includes(w.toLowerCase()));
-                        for (const word of words) {
-                            const { data: fallbackData } = await supabase
-                                .from('products')
-                                .select('*')
-                                .ilike('name', `%${word}%`)
-                                .eq('is_available', true)
-                                .limit(1);
+                        // Remove "Meia", "1/2", "Pizza" to find the flavor
+                        const cleanSearch = searchTerm.replace(/meia|1\/2|pizza|com|sem/gi, '').trim();
 
-                            if (fallbackData && fallbackData.length > 0) {
-                                data = fallbackData;
-                                log(`Product found by fallback word: ${word}`);
-                                break;
+                        const { data: flavorData } = await supabase
+                            .from('products')
+                            .select('*')
+                            .ilike('name', `%${cleanSearch}%`)
+                            .eq('is_available', true)
+                            .limit(1);
+
+                        if (flavorData && flavorData.length > 0) {
+                            data = flavorData;
+                            log(`Product found by flavor: ${cleanSearch}`);
+                        } else {
+                            // Fallback to word splitting
+                            const words = searchTerm.split(' ').filter(w => w.length > 3 && !['meia', 'pizza', 'com', 'sem'].includes(w.toLowerCase()));
+                            for (const word of words) {
+                                const { data: fallbackData } = await supabase
+                                    .from('products')
+                                    .select('*')
+                                    .ilike('name', `%${word}%`)
+                                    .eq('is_available', true)
+                                    .limit(1);
+
+                                if (fallbackData && fallbackData.length > 0) {
+                                    data = fallbackData;
+                                    log(`Product found by fallback word: ${word}`);
+                                    break;
+                                }
                             }
                         }
-                    }
 
-                    if (data && data.length > 0) {
-                        product = data[0];
-                        log(`Product found by name: ${product.name} (ID: ${product.id})`);
-                    } else {
-                        log(`Product NOT found by name: ${searchTerm}`);
+                        if (data && data.length > 0) {
+                            product = data[0];
+                            log(`Product found by name: ${product.name} (ID: ${product.id})`);
+                        } else {
+                            log(`Product NOT found by name: ${searchTerm}`);
+                        }
                     }
                 }
-            }
 
-            if (!product) {
-                log(`Product not found: ${item.productId}`);
-                continue;
+                if (!product) {
+                    log(`Product not found: ${item.productId}`);
+                    continue;
+                }
             }
 
             const quantity = parseFloat(item.quantity) || 1;
@@ -401,7 +417,7 @@ class AIService {
                 change_for: changeFor,
                 delivery_fee: deliveryFee,
                 delivery_type: deliveryType,
-                status: 'Pendente'
+                status: 'pending'
             }])
             .select()
             .single();
@@ -452,7 +468,7 @@ class AIService {
         const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
         const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
-        log(`Tool called: addToCart. Items: ${JSON.stringify(items)}`);
+        log(`Tool called: addToCart.Items: ${JSON.stringify(items)}`);
 
         const foundItems = [];
         const notFoundItems = [];
@@ -527,12 +543,24 @@ class AIService {
 
         if (error || !order) return JSON.stringify({ error: 'Pedido não encontrado. Verifique o número.' });
 
+        const statusMap = {
+            'pending': 'Pendente',
+            'approved': 'Aprovado',
+            'preparing': 'Preparando',
+            'ready': 'Pronto para Entrega',
+            'out_for_delivery': 'Saiu para Entrega',
+            'delivered': 'Entregue',
+            'cancelled': 'Cancelado'
+        };
+
+        const statusLabel = statusMap[order.status] || order.status;
+
         return JSON.stringify({
-            status: order.status,
+            status: statusLabel,
             total: order.total,
             orderNumber: order.order_number,
             createdAt: order.created_at,
-            message: `O pedido #${order.order_number} está com status: ${order.status}`
+            message: `O pedido #${order.order_number} está com status: ${statusLabel}`
         });
     }
 
@@ -569,7 +597,7 @@ class AIService {
         const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
         const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
-        log(`Saving message for ${phone} (${role}): ${content.substring(0, 50)}...`);
+        log(`Saving message for ${phone}(${role}): ${content.substring(0, 50)}...`);
         const { error } = await supabase.from('chat_history').insert([{ user_phone: phone, role, content }]);
         if (error) {
             console.error('Error saving message:', error);
@@ -645,7 +673,7 @@ class AIService {
     }
 
     async processMessage(messageData, channel = 'whatsapp') {
-        console.log(`--- AI Service: Processing Message (${channel}) ---`);
+        console.log(`--- AI Service: Processing Message(${channel}) ---`);
         const responses = [];
 
         await this.loadSettings();
@@ -673,7 +701,7 @@ class AIService {
 
         if (!userMessage) return [];
 
-        console.log(`User Message (${userPhone}): ${userMessage}`);
+        console.log(`User Message(${userPhone}): ${userMessage}`);
 
         try {
             await this.saveMessage(userPhone, 'user', userMessage);
@@ -735,7 +763,7 @@ FLUXO DE PEDIDO COMPLETO:
      * Subtotal: R$ XX,XX
      * Taxa de entrega: R$ XX,XX (se aplicável)
      * Total: R$ XX,XX
-   - Forneça o link de acompanhamento: "Acompanhe seu pedido aqui: [Link](${process.env.FRONTEND_URL || 'http://localhost:5173'}/order/ID)"
+     - Forneça o link de acompanhamento: "Acompanhe seu pedido aqui: [Link](${process.env.FRONTEND_URL || 'http://localhost:5173'}/order/ID)"
    - Agradeça e deseje bom apetite! 😋
 
 REGRAS IMPORTANTES:
@@ -999,11 +1027,23 @@ REGRAS IMPORTANTES:
         await this.loadSettings();
         if (!this.settings) return;
 
-        let message = `🔔 *Atualização do Pedido #${orderId}*\n\nSeu pedido está: *${status}*`;
+        const statusMap = {
+            'pending': 'Pendente',
+            'approved': 'Aprovado',
+            'preparing': 'Preparando',
+            'ready': 'Pronto para Entrega',
+            'out_for_delivery': 'Saiu para Entrega',
+            'delivered': 'Entregue',
+            'cancelled': 'Cancelado'
+        };
 
-        if (status === 'Saiu para entrega') {
+        const statusLabel = statusMap[status] || status;
+
+        let message = `🔔 *Atualização do Pedido #${orderId}*\n\nSeu pedido está: *${statusLabel}*`;
+
+        if (status === 'out_for_delivery' || status === 'Saiu para entrega') {
             message += '\n\n🛵 Nosso entregador já está a caminho!';
-        } else if (status === 'Entregue') {
+        } else if (status === 'delivered' || status === 'Entregue') {
             message += '\n\n😋 Bom apetite! Esperamos que goste.';
         }
 
