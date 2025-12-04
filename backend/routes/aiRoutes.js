@@ -17,9 +17,20 @@ router.post('/webhook', async (req, res) => {
 
         // Basic validation of Evolution API payload
         if (data && data.key && !data.key.fromMe) {
+            let remoteJid = data.key.remoteJid;
+
+            // Fix for LID (Linked Device ID) issues: use sender JID if available
+            if (sender) {
+                if (typeof sender === 'string' && sender.includes('@s.whatsapp.net')) {
+                    remoteJid = sender;
+                } else if (typeof sender === 'object' && sender.jid && sender.jid.includes('@s.whatsapp.net')) {
+                    remoteJid = sender.jid;
+                }
+            }
+
             await aiService.processMessage({
-                remoteJid: data.key.remoteJid,
-                pushName: data.pushName,
+                remoteJid: remoteJid,
+                pushName: data.pushName || (typeof sender === 'object' ? sender.name : null),
                 conversation: data.message?.conversation || data.message?.extendedTextMessage?.text,
                 audioMessage: data.message?.audioMessage,
                 base64: data.base64 || data.message?.audioMessage?.base64, // Try to find base64

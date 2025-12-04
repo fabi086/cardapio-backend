@@ -34,14 +34,9 @@ async function testSend() {
         const url = `${settings.evolution_api_url}/message/sendText/${settings.instance_name}`;
         const payload = {
             number: testNumber,
-            options: {
-                delay: 1200,
-                presence: 'composing',
-                linkPreview: false
-            },
-            textMessage: {
-                text: "Teste de conexão do Antigravity"
-            }
+            text: "Teste de conexão do Antigravity",
+            delay: 1200,
+            linkPreview: false
         };
 
         console.log('   Endpoint:', url);
