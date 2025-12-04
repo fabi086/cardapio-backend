@@ -717,6 +717,12 @@ REGRAS IMPORTANTES:
 - O frete é calculado AUTOMATICAMENTE pelo CEP - não invente valores
             `;
 
+            const messages = [
+                { role: "system", content: systemPrompt },
+                ...history,
+                { role: "user", content: userMessage }
+            ];
+
             const tools = [
                 {
                     type: "function",
