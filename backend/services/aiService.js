@@ -311,12 +311,32 @@ class AIService {
                 log(`Looking up product by name: ${searchTerm}`);
 
                 if (typeof searchTerm === 'string') {
-                    const { data } = await supabase
+                    // 1. Try exact/fuzzy match
+                    let { data } = await supabase
                         .from('products')
                         .select('*')
                         .ilike('name', `%${searchTerm}%`)
                         .eq('is_available', true)
                         .limit(1);
+
+                    // 2. If not found, try splitting words (e.g. "Meia Calabresa" -> "Calabresa")
+                    if (!data || data.length === 0) {
+                        const words = searchTerm.split(' ').filter(w => w.length > 3 && !['meia', 'pizza', 'com', 'sem'].includes(w.toLowerCase()));
+                        for (const word of words) {
+                            const { data: fallbackData } = await supabase
+                                .from('products')
+                                .select('*')
+                                .ilike('name', `%${word}%`)
+                                .eq('is_available', true)
+                                .limit(1);
+
+                            if (fallbackData && fallbackData.length > 0) {
+                                data = fallbackData;
+                                log(`Product found by fallback word: ${word}`);
+                                break;
+                            }
+                        }
+                    }
 
                     if (data && data.length > 0) {
                         product = data[0];
@@ -342,6 +362,12 @@ class AIService {
                 quantity: quantity,
                 price: product.price,
                 modifiers: item.modifiers || []
+            });
+        }
+
+        if (orderItemsData.length === 0) {
+            return JSON.stringify({
+                error: "Não foi possível identificar os produtos do pedido. Por favor, verifique o cardápio novamente e use os nomes exatos ou IDs dos produtos."
             });
         }
 
@@ -764,11 +790,12 @@ REGRAS IMPORTANTES:
                                     items: {
                                         type: "object",
                                         properties: {
-                                            productId: { type: "integer", description: "ID do produto" },
+                                            productId: { type: "integer", description: "ID do produto (preferencial)" },
+                                            productName: { type: "string", description: "Nome do produto (caso não tenha ID)" },
                                             quantity: { type: "number", description: "Quantidade" },
                                             modifiers: { type: "array", items: { type: "string" }, description: "Modificadores opcionais" }
                                         },
-                                        required: ["productId", "quantity"]
+                                        required: ["quantity"]
                                     }
                                 },
                                 paymentMethod: {
