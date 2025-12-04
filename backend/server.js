@@ -9,7 +9,9 @@ const PORT = 3002;
 // Log startup
 const fs = require('fs');
 const path = require('path');
-const logFile = path.join(__dirname, 'debug_memory.log');
+const logFile = process.env.VERCEL
+  ? path.join('/tmp', 'debug_memory.log')
+  : path.join(__dirname, 'debug_memory.log');
 try { fs.appendFileSync(logFile, `${new Date().toISOString()} - SERVER STARTING...\n`); } catch (e) { }
 
 app.use(cors({

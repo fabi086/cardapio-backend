@@ -14,7 +14,7 @@ const Coupons = () => {
         expiration_date: ''
     });
 
-    const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3002').replace(/\/$/, '');
+    const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
     useEffect(() => {
         fetchCoupons();

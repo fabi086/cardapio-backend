@@ -3,9 +3,9 @@ import { MessageCircle, X, Send, Mic } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 const ChatWidget = () => {
-    // Use VITE_API_URL if defined (production), otherwise default to localhost:3002
-    // Remove trailing slash to prevent double slashes in requests
-    const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3002').replace(/\/$/, '');
+    // Use VITE_API_URL if defined, otherwise default to relative path (empty string)
+    // This allows it to work on Vercel where API is at /api
+    const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
     const { addToCart, setIsCartOpen: openCart } = useCart();
     const [isOpen, setIsOpen] = useState(false);
@@ -226,8 +226,8 @@ const ChatWidget = () => {
                         {messages.map((msg, idx) => (
                             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[80%] p-2 rounded-lg text-sm whitespace-pre-wrap ${msg.role === 'user'
-                                        ? 'bg-red-600 text-white rounded-br-none'
-                                        : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'
+                                    ? 'bg-red-600 text-white rounded-br-none'
+                                    : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none shadow-sm'
                                     }`}>
                                     {renderMessageText(msg.text)}
                                 </div>
