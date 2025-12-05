@@ -1022,6 +1022,8 @@ REGRAS IMPORTANTES:
 
         } catch (error) {
             console.error('Error processing AI message:', error);
+            this.logToDb('error', 'Critical Error in processMessage', { error: error.message, stack: error.stack });
+
             const fs = require('fs');
             const path = require('path');
             const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
