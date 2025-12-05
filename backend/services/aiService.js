@@ -727,10 +727,21 @@ class AIService {
 
         try {
             await this.saveMessage(userPhone, 'user', userMessage);
+            this.logToDb('info', 'Message Saved', { userPhone });
 
             const history = await this.getHistory(userPhone);
 
             const { isOpen } = this.checkOpeningHours();
+            // ... (setup prompt)
+
+            this.logToDb('info', 'Sending to OpenAI', { model: "gpt-4-turbo-preview" });
+            const response = await this.openai.chat.completions.create({
+                model: "gpt-4-turbo-preview", // Check if model is correct in code
+                messages: messages,
+                tools: tools,
+                tool_choice: "auto"
+            });
+            this.logToDb('info', 'OpenAI Response Received', { id: response.id });
             const systemPrompt = `
 ${this.settings.system_prompt || 'Você é um assistente virtual.'}
 
