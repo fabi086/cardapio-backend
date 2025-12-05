@@ -734,13 +734,13 @@ class AIService {
             const { isOpen } = this.checkOpeningHours();
             // ... (setup prompt)
 
-            this.logToDb('info', 'Sending to OpenAI', { model: "gpt-4-turbo-preview" });
+            this.logToDb('info', 'Sending to OpenAI', { model: "gpt-4o-mini" });
             const response = await this.openai.chat.completions.create({
-                model: "gpt-4-turbo-preview", // Check if model is correct in code
+                model: "gpt-4o-mini",
                 messages: messages,
                 tools: tools,
                 tool_choice: "auto"
-            });
+            }, { timeout: 45000 }); // 45s timeout (Vercel max is usually 10s on hobby, but worth trying)
             this.logToDb('info', 'OpenAI Response Received', { id: response.id });
             const systemPrompt = `
 ${this.settings.system_prompt || 'Você é um assistente virtual.'}
