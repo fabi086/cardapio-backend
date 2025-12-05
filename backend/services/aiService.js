@@ -26,9 +26,27 @@ class AIService {
                 this.openai = new OpenAI({ apiKey: apiKey });
             } else {
                 console.error('OpenAI API Key missing in settings and env vars');
+                this.logToDb('error', 'OpenAI API Key missing', { context: 'loadSettings' });
             }
         }
         return this.settings;
+    }
+
+    async logToDb(level, message, details = {}) {
+        try {
+            console.log(`[${level.toUpperCase()}] ${message}`, details);
+            // Fire and forget - don't await availability check if table missing
+            const { error } = await supabase.from('system_logs').insert([{
+                level,
+                message,
+                details,
+                created_at: new Date()
+            }]);
+
+            if (error) console.error('Failed to write to system_logs:', error.message);
+        } catch (err) {
+            console.error('Error in logToDb:', err);
+        }
     }
 
     // --- HELPERS ---
@@ -674,10 +692,14 @@ class AIService {
 
     async processMessage(messageData, channel = 'whatsapp') {
         console.log(`--- AI Service: Processing Message(${channel}) ---`);
+        this.logToDb('info', 'Processing Message', { channel, ...messageData });
         const responses = [];
 
         await this.loadSettings();
-        if (!this.settings || !this.settings.is_active || !this.openai) return [];
+        if (!this.settings || !this.settings.is_active || !this.openai) {
+            this.logToDb('warning', 'AI Service inactive or missing config', { isActive: this.settings?.is_active, hasOpenAI: !!this.openai });
+            return [];
+        }
 
         const { remoteJid, pushName, conversation, audioMessage, base64 } = messageData;
         let userMessage = conversation || messageData.text?.message;
@@ -1020,6 +1042,7 @@ REGRAS IMPORTANTES:
             );
         } catch (error) {
             console.error('Error sending WhatsApp message:', error.response?.data || error.message);
+            this.logToDb('error', 'Error sending WhatsApp message', { error: error.response?.data || error.message });
         }
     }
 

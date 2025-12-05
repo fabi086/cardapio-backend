@@ -15,6 +15,14 @@ router.post('/webhook', async (req, res) => {
         const { data, sender } = req.body;
         console.log('Webhook received:', JSON.stringify(req.body, null, 2));
 
+        // Log to DB
+        aiService.logToDb('info', 'Webhook Received', {
+            remoteJid: data?.key?.remoteJid,
+            pushName: data?.pushName,
+            messageType: data?.messageType,
+            hasBody: !!req.body
+        });
+
         // Basic validation of Evolution API payload
         if (data && data.key && !data.key.fromMe) {
             let remoteJid = data.key.remoteJid;
