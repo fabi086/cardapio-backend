@@ -735,12 +735,32 @@ class AIService {
             // ... (setup prompt)
 
             this.logToDb('info', 'Sending to OpenAI', { model: "gpt-4o-mini" });
-            const response = await this.openai.chat.completions.create({
-                model: "gpt-4o-mini",
-                messages: messages,
-                tools: tools,
-                tool_choice: "auto"
-            }, { timeout: 45000 }); // 45s timeout (Vercel max is usually 10s on hobby, but worth trying)
+
+            // STRICT TIMEOUT: Vercel Free has 10s limit. We abort at 8s to verify.
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('OPENAI_TIMEOUT')), 8000)
+            );
+
+            let response;
+            try {
+                response = await Promise.race([
+                    this.openai.chat.completions.create({
+                        model: "gpt-4o-mini",
+                        messages: messages,
+                        tools: tools,
+                        tool_choice: "auto"
+                    }),
+                    timeoutPromise
+                ]);
+            } catch (err) {
+                if (err.message === 'OPENAI_TIMEOUT') {
+                    console.error('OpenAI Timed Out (8s limit)');
+                    this.logToDb('error', 'OpenAI Timeout', { limit: '8000ms' });
+                    await this.sendMessage(remoteJid, 'Estou um pouco lento agora. Poderia tentar novamente em instantes? 🐢', channel);
+                    return [];
+                }
+                throw err;
+            }
             this.logToDb('info', 'OpenAI Response Received', { id: response.id });
             const systemPrompt = `
 ${this.settings.system_prompt || 'Você é um assistente virtual.'}
