@@ -301,6 +301,7 @@ const Settings = () => {
                     <TabButton id="social" label="Redes Sociais" icon={Share2} activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="hours" label="Horários" icon={Clock} activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="delivery" label="Entregas" icon={Truck} activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton id="debug" label="Testar Notificações" icon={X} activeTab={activeTab} setActiveTab={setActiveTab} />
                 </div>
 
                 {/* Content Area - Transparent Background for Dark Mode Integration */}
@@ -546,34 +547,122 @@ const Settings = () => {
                         </div>
                     )}
 
+                    {/* DEBUG TAB */}
+                    {activeTab === 'debug' && (
+                        <div className="space-y-6 animate-fadeIn">
+                            <h2 className="text-lg font-bold border-b border-stone-200 dark:border-stone-700 pb-2 mb-4 flex items-center gap-2 text-stone-700 dark:text-stone-200">
+                                <X size={18} /> Diagnóstico de Notificações
+                            </h2>
+
+                            <div className="p-4 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-lg mb-4 text-sm text-orange-800 dark:text-orange-200">
+                                Use esta área para testar se o sistema consegue enviar alertas para você.
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-6">
+                                {/* 1. Audio Test */}
+                                <div className="p-4 bg-white dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700">
+                                    <h3 className="font-bold flex items-center gap-2 mb-2"><Clock size={16} /> 1. Teste de Som (Navegador)</h3>
+                                    <p className="text-sm text-stone-500 mb-4">Verifique se o seu dispositivo consegue tocar sons de alerta.</p>
+                                    <button
+                                        onClick={() => {
+                                            const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+                                            audio.play().catch(e => alert("Erro ao tocar som: " + e.message));
+                                        }}
+                                        className="bg-stone-800 text-white px-4 py-2 rounded hover:bg-stone-700"
+                                    >
+                                        Tocar Som
+                                    </button>
+                                </div>
+
+                                {/* 2. WhatsApp Test */}
+                                <div className="p-4 bg-white dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700">
+                                    <h3 className="font-bold flex items-center gap-2 mb-2"><Phone size={16} /> 2. Teste de WhatsApp</h3>
+                                    <p className="text-sm text-stone-500 mb-4">Envia uma mensagem de teste para o número configurado ({settings.whatsapp}).</p>
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                if (!settings.whatsapp) return alert('Configure o WhatsApp na aba Geral primeiro.');
+                                                const apiUrl = import.meta.env.VITE_API_URL || '';
+                                                const res = await fetch(`${apiUrl}/api/ai/notify-admin`, {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ order: { order_number: 999, customer_name: 'Teste Admin', total: 1.00, delivery_type: 'pickup' } })
+                                                });
+                                                const data = await res.json();
+                                                alert(data.success ? 'Mensagem enviada com sucesso!' : 'Falha: ' + (data.error || JSON.stringify(data)));
+                                            } catch (e) {
+                                                alert('Erro de conexão: ' + e.message);
+                                            }
+                                        }}
+                                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500"
+                                    >
+                                        Enviar WhatsApp de Teste
+                                    </button>
+                                </div>
+
+                                {/* 3. Web Push Test */}
+                                <div className="p-4 bg-white dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700">
+                                    <h3 className="font-bold flex items-center gap-2 mb-2"><Share2 size={16} /> 3. Teste Push (App)</h3>
+                                    <p className="text-sm text-stone-500 mb-4">Envia uma notificação real para este dispositivo (mesmo com navegador fechado).</p>
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                const apiUrl = import.meta.env.VITE_API_URL || '';
+                                                // 1. Check Permission
+                                                if (Notification.permission === 'default') {
+                                                    await Notification.requestPermission();
+                                                }
+                                                if (Notification.permission !== 'granted') {
+                                                    return alert('Permissão de notificação negada pelo navegador.');
+                                                }
+
+                                                // 2. Trigger
+                                                const res = await fetch(`${apiUrl}/api/push/send-test`, {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ message: 'Isso é um teste de Notificação Push!' })
+                                                });
+                                                const data = await res.json();
+                                                alert(data.success ? 'Notificação enviada! Veja sua barra de status.' : 'Falha: ' + (data.error || JSON.stringify(data)));
+                                            } catch (e) {
+                                                alert('Erro de conexão: ' + e.message);
+                                            }
+                                        }}
+                                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-500"
+                                    >
+                                        Enviar Notificação Push
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
-        </div>
-    );
+            );
 };
 
-// Helper Components defined OUTSIDE
-const TabButton = ({ id, label, icon: Icon, activeTab, setActiveTab }) => (
-    <button
-        onClick={() => setActiveTab(id)}
-        className={`p-3 rounded-lg text-left font-medium flex items-center gap-3 transition-all text-sm ${activeTab === id ? 'bg-italian-red text-white shadow-md' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}`}
-    >
-        <Icon size={18} /> {label}
-    </button>
-);
+            // Helper Components defined OUTSIDE
+            const TabButton = ({id, label, icon: Icon, activeTab, setActiveTab }) => (
+            <button
+                onClick={() => setActiveTab(id)}
+                className={`p-3 rounded-lg text-left font-medium flex items-center gap-3 transition-all text-sm ${activeTab === id ? 'bg-italian-red text-white shadow-md' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}`}
+            >
+                <Icon size={18} /> {label}
+            </button>
+            );
 
-const InputGroup = ({ label, name, value, onChange, placeholder, type = "text", colSpan = 1 }) => (
-    <div className={colSpan > 1 ? `col-span-${colSpan}` : ''}>
-        <label className="block text-xs font-bold mb-1 text-stone-500 dark:text-stone-400 uppercase tracking-wider">{label}</label>
-        <input
-            type={type}
-            name={name}
-            value={value}
-            onChange={onChange}
-            className="w-full p-2 rounded border border-stone-300 dark:border-stone-600 bg-transparent dark:text-white outline-none focus:border-italian-red transition-colors text-sm"
-            placeholder={placeholder}
-        />
-    </div>
-);
+            const InputGroup = ({label, name, value, onChange, placeholder, type = "text", colSpan = 1}) => (
+            <div className={colSpan > 1 ? `col-span-${colSpan}` : ''}>
+                <label className="block text-xs font-bold mb-1 text-stone-500 dark:text-stone-400 uppercase tracking-wider">{label}</label>
+                <input
+                    type={type}
+                    name={name}
+                    value={value}
+                    onChange={onChange}
+                    className="w-full p-2 rounded border border-stone-300 dark:border-stone-600 bg-transparent dark:text-white outline-none focus:border-italian-red transition-colors text-sm"
+                    placeholder={placeholder}
+                />
+            </div>
+            );
 
-export default Settings;
+            export default Settings;
