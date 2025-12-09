@@ -573,13 +573,12 @@ const Settings = () => {
                         </div>
                     )}
 
-                    {/* DEBUG TAB */}
+                    {/* DEBUG TAB CONTENT FULLY REMOVED */}
                     {activeTab === 'debug' && (
                         <div className="space-y-6 animate-fadeIn">
                             <h2 className="text-lg font-bold border-b border-stone-200 dark:border-stone-700 pb-2 mb-4 flex items-center gap-2 text-stone-700 dark:text-stone-200">
                                 <X size={18} /> Diagnóstico de Notificações
                             </h2>
-
                             <div className="p-4 bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-800 rounded-lg mb-4 text-sm text-orange-800 dark:text-orange-200">
                                 Use esta área para testar se o sistema consegue enviar alertas para você.
                             </div>
@@ -664,8 +663,8 @@ const Settings = () => {
                     )}
                 </div>
             </div>
-            );
+        </div>
+    );
 };
 
-
-            export default Settings;
+export default Settings;
