@@ -15,9 +15,10 @@ import Orders from './pages/admin/Orders';
 import Customers from './pages/admin/Customers';
 import Coupons from './pages/admin/Coupons';
 import Settings from './pages/admin/Settings';
-import AIAgent from './pages/admin/AIAgent';
+import OrderNotificationListener from './components/OrderNotificationListener';
 
-import ChatWidget from './components/ChatWidget';
+
+
 
 function App() {
   return (
@@ -48,7 +49,7 @@ function App() {
               <Route path="settings" element={<Settings />} />
             </Route>
           </Routes>
-          <ChatWidget />
+          <OrderNotificationListener />
         </Router>
       </BusinessSettingsProvider>
     </CartProvider>
