@@ -642,7 +642,10 @@ const Settings = () => {
 };
 
             // Helper Components defined OUTSIDE
-            const TabButton = ({id, label, icon: Icon, activeTab, setActiveTab }) => (
+            // Helper Components defined OUTSIDE
+            const TabButton = ({id, label, icon, activeTab, setActiveTab}) => {
+                const Icon = icon;
+            return (
             <button
                 onClick={() => setActiveTab(id)}
                 className={`p-3 rounded-lg text-left font-medium flex items-center gap-3 transition-all text-sm ${activeTab === id ? 'bg-italian-red text-white shadow-md' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}`}
@@ -650,6 +653,7 @@ const Settings = () => {
                 <Icon size={18} /> {label}
             </button>
             );
+            };
 
             const InputGroup = ({label, name, value, onChange, placeholder, type = "text", colSpan = 1}) => (
             <div className={colSpan > 1 ? `col-span-${colSpan}` : ''}>
