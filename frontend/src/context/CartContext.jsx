@@ -165,7 +165,8 @@ export const CartProvider = ({ children }) => {
                             order_number: orderNumber,
                             customer_name: customerData.name,
                             total: cartTotal + (customerData.deliveryFee || 0),
-                            delivery_type: customerData.deliveryFee ? 'delivery' : 'pickup'
+                            // Fix: Check for address to determine delivery type, as deliveryFee might be 0 (free shipping)
+                            delivery_type: (customerData.address || customerData.street || customerData.cep) ? 'delivery' : 'pickup'
                         }
                     })
                 }).catch(err => console.error('Failed to trigger admin notification:', err));
