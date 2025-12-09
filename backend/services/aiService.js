@@ -486,9 +486,20 @@ class AIService {
 
             // Push Notification
             let pushBody = `R$ ${total.toFixed(2)} - ${customer.name}`;
+            
+            // Adicionar itens
             if (itemsToInsert && itemsToInsert.length > 0) {
                 const itemsSummary = itemsToInsert.map(i => `${i.quantity}x ${i.product_name || i.name}`).join(', ');
-                pushBody += `\n${itemsSummary}`;
+                pushBody += `\n📦 ${itemsSummary}`;
+            }
+
+            // Adicionar endereço se for entrega
+            if (deliveryType === 'delivery' && (customer.address || customer.street)) {
+                // Formatar endereço simples
+                const addressStr = customer.address || `${customer.street}, ${customer.number}`;
+                pushBody += `\n📍 ${addressStr}`;
+            } else if (deliveryType === 'pickup') {
+                pushBody += `\n🏃 Retirada no Balcão`;
             }
 
             await pushService.sendNotificationToAll({
