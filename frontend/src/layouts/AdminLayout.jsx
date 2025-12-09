@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { LayoutDashboard, LogOut, Settings, UtensilsCrossed, Clock, Sun, Moon, Users, Bot, Menu, X, Tag } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import InstallPrompt from '../components/InstallPrompt';
+import OrderNotificationListener from '../components/OrderNotificationListener';
 
 const AdminLayout = () => {
     const navigate = useNavigate();
@@ -148,6 +149,7 @@ const AdminLayout = () => {
             <main className="flex-1 overflow-auto w-full">
                 <Outlet />
             </main>
+            <OrderNotificationListener />
         </div>
     );
 };
