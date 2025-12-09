@@ -153,6 +153,26 @@ export const CartProvider = ({ children }) => {
                 await supabase.rpc('increment_coupon_usage', { coupon_id: appliedCoupon.id });
             }
 
+            // 5. Notify Admin via WhatsApp (Background Notification)
+            try {
+                // Use import.meta.env.VITE_API_URL if defined, otherwise empty string (relative path)
+                const apiUrl = import.meta.env.VITE_API_URL || '';
+                fetch(`${apiUrl}/api/ai/notify-admin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        order: {
+                            order_number: orderNumber,
+                            customer_name: customerData.name,
+                            total: cartTotal + (customerData.deliveryFee || 0),
+                            delivery_type: customerData.deliveryFee ? 'delivery' : 'pickup'
+                        }
+                    })
+                }).catch(err => console.error('Failed to trigger admin notification:', err));
+            } catch (notifyError) {
+                console.error('Notification trigger error:', notifyError);
+            }
+
             clearCart();
             setAppliedCoupon(null);
             return { ...order, items: itemsToInsert };

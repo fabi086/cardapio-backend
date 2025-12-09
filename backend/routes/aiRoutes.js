@@ -132,6 +132,38 @@ router.post('/notify-status', async (req, res) => {
     }
 });
 
+// Notify Admin of New Order (WhatsApp)
+router.post('/notify-admin', async (req, res) => {
+    try {
+        const { order } = req.body;
+
+        // Fetch Admin/Business Phone
+        const { data: settings } = await supabase
+            .from('business_settings')
+            .select('whatsapp')
+            .single();
+
+        if (!settings || !settings.whatsapp) {
+            console.log('No WhatsApp number configured for admin notification');
+            return res.json({ success: false, message: 'No admin phone configured' });
+        }
+
+        const adminPhone = settings.whatsapp.replace(/\D/g, '');
+        const message = `🔥 *NOVO PEDIDO #${order.order_number} CHEGOU!* 🔥\n\n👤 *Cliente:* ${order.customer_name}\n💰 *Total:* R$ ${parseFloat(order.total).toFixed(2)}\n🛵 *Tipo:* ${order.delivery_type === 'delivery' ? 'Entrega' : 'Retirada'}\n\nAcesse o painel para ver detalhes!`;
+
+        const remoteJid = `${adminPhone}@s.whatsapp.net`;
+
+        // Send using AI Service underlying sender
+        await aiService.sendMessage(remoteJid, message);
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error notifying admin:', error);
+        // Don't fail the request if notification fails
+        res.json({ success: false, error: error.message });
+    }
+});
+
 // Web Chat Endpoint
 router.post('/chat', async (req, res) => {
     try {
