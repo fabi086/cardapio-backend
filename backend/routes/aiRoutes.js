@@ -150,7 +150,13 @@ router.post('/notify-admin', async (req, res) => {
         }
 
         const adminPhone = settings.whatsapp.replace(/\D/g, '');
-        const message = `🔥 *NOVO PEDIDO #${order.order_number} CHEGOU!* 🔥\n\n👤 *Cliente:* ${order.customer_name}\n💰 *Total:* R$ ${parseFloat(order.total).toFixed(2)}\n🛵 *Tipo:* ${order.delivery_type === 'delivery' ? 'Entrega' : 'Retirada'}\n\nAcesse o painel para ver detalhes!`;
+        // Format items for display
+        let itemsList = '';
+        if (order.items && order.items.length > 0) {
+            itemsList = '\n\n🛒 *Itens:*\n' + order.items.map(i => `- ${i.quantity}x ${i.product_name || i.name}`).join('\n');
+        }
+
+        const message = `🔥 *NOVO PEDIDO #${order.order_number} CHEGOU!* 🔥\n\n👤 *Cliente:* ${order.customer_name}\n💰 *Total:* R$ ${parseFloat(order.total).toFixed(2)}\n🛵 *Tipo:* ${order.delivery_type === 'delivery' ? 'Entrega' : 'Retirada'}${itemsList}\n\nAcesse o painel para ver detalhes!`;
 
         const remoteJid = `${adminPhone}@s.whatsapp.net`;
 
@@ -158,10 +164,16 @@ router.post('/notify-admin', async (req, res) => {
         await aiService.sendMessage(remoteJid, message);
 
         // Also Send Web Push Notification (Service Worker)
+        let pushBody = `R$ ${parseFloat(order.total).toFixed(2)} - ${order.customer_name}`;
+        if (order.items && order.items.length > 0) {
+            const itemsSummary = order.items.map(i => `${i.quantity}x ${i.product_name || i.name}`).join(', ');
+            pushBody += `\n${itemsSummary}`;
+        }
+
         await pushService.sendNotificationToAll({
             title: `Novo Pedido #${order.order_number}!`,
-            body: `R$ ${parseFloat(order.total).toFixed(2)} - ${order.customer_name}`,
-            icon: '/logo.svg',
+            body: pushBody,
+            icon: 'https://cardapio-frontend-u6qq.vercel.app/logo.svg', // Ensure absolute URL for notifications
             url: '/admin/orders'
         });
 

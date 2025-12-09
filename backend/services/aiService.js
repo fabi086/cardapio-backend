@@ -1,6 +1,7 @@
 const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
 const OpenAI = require('openai');
+const pushService = require('./pushService');
 
 const supabaseUrl = 'https://pluryiqzywfsovrcuhat.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsdXJ5aXF6eXdmc292cmN1aGF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNDc2NzMsImV4cCI6MjA3OTgyMzY3M30.qidjRUyB-_uspMzVAKEWGxuSHMCezAxZsHtN3IgxZqA';
@@ -465,6 +466,41 @@ class AIService {
         log(`Successfully inserted ${itemsToInsert.length} items`);
 
         log(`Order created successfully: ${order.id}, number: ${orderNumber}`);
+
+        // NOTIFICAR ADMIN (WhatsApp + Push)
+        try {
+            await this.loadSettings(); // Ensure settings are loaded
+            if (this.settings && this.settings.whatsapp) {
+                const adminPhone = this.settings.whatsapp.replace(/\D/g, '');
+
+                // Format items for display
+                let itemsList = '';
+                if (itemsToInsert && itemsToInsert.length > 0) {
+                    itemsList = '\n\n🛒 *Itens:*\n' + itemsToInsert.map(i => `- ${i.quantity}x ${i.product_name || i.name}`).join('\n');
+                }
+
+                const msg = `🔥 *NOVO PEDIDO #${orderNumber} CHEGOU!* 🔥\n\n👤 *Cliente:* ${customer.name}\n💰 *Total:* R$ ${total.toFixed(2)}\n🛵 *Tipo:* ${deliveryType === 'delivery' ? 'Entrega' : 'Retirada'}${itemsList}\n\nAcesse o painel para ver detalhes!`;
+
+                await this.sendMessage(`${adminPhone}@s.whatsapp.net`, msg);
+            }
+
+            // Push Notification
+            let pushBody = `R$ ${total.toFixed(2)} - ${customer.name}`;
+            if (itemsToInsert && itemsToInsert.length > 0) {
+                const itemsSummary = itemsToInsert.map(i => `${i.quantity}x ${i.product_name || i.name}`).join(', ');
+                pushBody += `\n${itemsSummary}`;
+            }
+
+            await pushService.sendNotificationToAll({
+                title: `Novo Pedido #${orderNumber}!`,
+                body: pushBody,
+                icon: 'https://cardapio-frontend-u6qq.vercel.app/logo.svg',
+                url: '/admin/orders'
+            });
+            log('Admin notifications sent.');
+        } catch (notifyError) {
+            log(`Error sending admin notifications: ${notifyError.message}`);
+        }
 
         // 7. Retornar sucesso com link de acompanhamento
         return JSON.stringify({

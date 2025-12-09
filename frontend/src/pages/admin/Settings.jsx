@@ -590,12 +590,12 @@ const Settings = () => {
                                     <p className="text-sm text-stone-500 mb-4">Verifique se o seu dispositivo consegue tocar sons de alerta.</p>
                                     <button
                                         onClick={() => {
-                                            const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+                                            const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3");
                                             audio.play().catch(e => alert("Erro ao tocar som: " + e.message));
                                         }}
                                         className="bg-stone-800 text-white px-4 py-2 rounded hover:bg-stone-700"
                                     >
-                                        Tocar Som
+                                        Tocar Som (Caixa)
                                     </button>
                                 </div>
 
@@ -611,7 +611,18 @@ const Settings = () => {
                                                 const res = await fetch(`${apiUrl}/api/ai/notify-admin`, {
                                                     method: 'POST',
                                                     headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ order: { order_number: 999, customer_name: 'Teste Admin', total: 1.00, delivery_type: 'pickup' } })
+                                                    body: JSON.stringify({
+                                                        order: {
+                                                            order_number: 999,
+                                                            customer_name: 'Teste Admin',
+                                                            total: 150.00,
+                                                            delivery_type: 'pickup',
+                                                            items: [
+                                                                { quantity: 2, name: 'Pizza Calabresa' },
+                                                                { quantity: 1, name: 'Coca-Cola 2L' }
+                                                            ]
+                                                        }
+                                                    })
                                                 });
                                                 const data = await res.json();
                                                 alert(data.success ? 'Mensagem enviada com sucesso!' : 'Falha: ' + (data.error || JSON.stringify(data)));
