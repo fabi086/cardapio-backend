@@ -31,6 +31,15 @@ const InstallPrompt = () => {
     }, []);
 
     const handleInstallClick = async () => {
+        // Unlock Audio Context for future notifications
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+            const audioCtx = new AudioContext();
+            audioCtx.resume().then(() => {
+                console.log('Audio Context Resumed/Unlocked via Install Click');
+            });
+        }
+
         if (!deferredPrompt) return;
 
         deferredPrompt.prompt();
