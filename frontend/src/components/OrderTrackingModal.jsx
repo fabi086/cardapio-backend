@@ -60,6 +60,7 @@ const OrderTrackingModal = ({ isOpen, onClose }) => {
             approved: 'Aprovado',
             preparing: 'Em Preparo',
             ready: 'Pronto para Entrega',
+            out_for_delivery: 'Saiu para Entrega',
             delivered: 'Entregue',
             cancelled: 'Cancelado'
         };
