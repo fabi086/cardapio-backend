@@ -1,6 +1,6 @@
-const express = require('express');
 const router = express.Router();
 const aiService = require('../services/aiService');
+const pushService = require('../services/pushService');
 const { createClient } = require('@supabase/supabase-js');
 
 // Initialize Supabase client
@@ -155,6 +155,14 @@ router.post('/notify-admin', async (req, res) => {
 
         // Send using AI Service underlying sender
         await aiService.sendMessage(remoteJid, message);
+
+        // Also Send Web Push Notification (Service Worker)
+        await pushService.sendNotificationToAll({
+            title: `Novo Pedido #${order.order_number}!`,
+            body: `R$ ${parseFloat(order.total).toFixed(2)} - ${order.customer_name}`,
+            icon: '/logo.svg',
+            url: '/admin/orders'
+        });
 
         res.json({ success: true });
     } catch (error) {
