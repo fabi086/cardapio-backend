@@ -3,3 +3,8 @@ Status: 201
 Status Text: Created
 Success! Write permission granted.
 Cleaning up test record: b15a569c-b463-46c2-a7e8-2505b610d355
+Checking WRITE permission via REST API...
+Status: 201
+Status Text: Created
+Success! Write permission granted.
+Cleaning up test record: a1d72a7d-c85e-4f2a-bdfe-9b1762424b1b

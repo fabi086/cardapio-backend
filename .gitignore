@@ -4,3 +4,6 @@ node_modules
 dist
 coverage
 .vscode
+*.log
+*.txt
+backend/debug_memory.log

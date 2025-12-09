@@ -1,11 +1,15 @@
-require('dotenv').config();
 const aiService = require('./services/aiService');
 
 async function test() {
-    console.log('Testing getMenu...');
+    console.log('Testing AI Service...');
     try {
-        const result = await aiService.getMenu();
-        console.log('Result:', result);
+        const response = await aiService.processMessage({
+            remoteJid: '5511999999999@s.whatsapp.net',
+            pushName: 'Test User',
+            conversation: 'oi',
+            text: { message: 'oi' }
+        });
+        console.log('Response:', response);
     } catch (error) {
         console.error('Error:', error);
     }
