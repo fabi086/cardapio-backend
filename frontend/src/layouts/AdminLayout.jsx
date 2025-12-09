@@ -3,6 +3,7 @@ import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { LayoutDashboard, LogOut, Settings, UtensilsCrossed, Clock, Sun, Moon, Users, Bot, Menu, X, Tag } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import InstallPrompt from '../components/InstallPrompt';
 
 const AdminLayout = () => {
     const navigate = useNavigate();
@@ -113,6 +114,7 @@ const AdminLayout = () => {
                 </div>
 
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                    <InstallPrompt />
                     {menuItems.map((item) => {
                         const isActive = location.pathname === item.path;
                         return (
