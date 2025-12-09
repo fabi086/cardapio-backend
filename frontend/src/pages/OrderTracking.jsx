@@ -27,6 +27,7 @@ const OrderTracking = () => {
     const fetchOrder = async () => {
         try {
             const { data, error } = await supabase
+                .from('orders')
                 .select('*, order_items(*)')
                 .eq('id', id)
                 .single();
