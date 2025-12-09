@@ -98,6 +98,9 @@ const Footer = () => {
                         {settings.cnpj && ` - CNPJ: ${settings.cnpj}`}
                         . Todos os direitos reservados.
                     </p>
+                    <p className="mt-2 opacity-50 hover:opacity-100 transition-opacity">
+                        <a href="/admin" className="hover:text-white">Admin Access</a>
+                    </p>
                 </div>
             </div>
         </footer>
