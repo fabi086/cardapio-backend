@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg', 'logo.svg'],
       manifest: {
         name: 'Cardápio Digital',
         short_name: 'Cardápio',
@@ -21,14 +21,16 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
-            src: 'vite.svg',
-            sizes: '192x192',
-            type: 'image/svg+xml'
+            src: 'logo.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
           },
           {
-            src: 'vite.svg',
+            src: 'logo.svg',
             sizes: '512x512',
-            type: 'image/svg+xml'
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
           }
         ]
       }
