@@ -2,6 +2,32 @@
 import { supabase } from '../../lib/supabase';
 import { Save, Building2, Phone, MapPin, Clock, DollarSign, Upload, Trash2, Plus, Palette, Map, Share2, Globe, Facebook, Youtube, Instagram, Truck, Type, X } from 'lucide-react';
 
+const TabButton = ({ id, label, icon, activeTab, setActiveTab }) => {
+    const Icon = icon;
+    return (
+        <button
+            onClick={() => setActiveTab(id)}
+            className={`p-3 rounded-lg text-left font-medium flex items-center gap-3 transition-all text-sm ${activeTab === id ? 'bg-italian-red text-white shadow-md' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}`}
+        >
+            <Icon size={18} /> {label}
+        </button>
+    );
+};
+
+const InputGroup = ({ label, name, value, onChange, placeholder, type = "text", colSpan = 1 }) => (
+    <div className={colSpan > 1 ? `col-span-${colSpan}` : ''}>
+        <label className="block text-xs font-bold mb-1 text-stone-500 dark:text-stone-400 uppercase tracking-wider">{label}</label>
+        <input
+            type={type}
+            name={name}
+            value={value}
+            onChange={onChange}
+            className="w-full p-2 rounded border border-stone-300 dark:border-stone-600 bg-transparent dark:text-white outline-none focus:border-italian-red transition-colors text-sm"
+            placeholder={placeholder}
+        />
+    </div>
+);
+
 const Settings = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -641,32 +667,5 @@ const Settings = () => {
             );
 };
 
-            // Helper Components defined OUTSIDE
-            // Helper Components defined OUTSIDE
-            const TabButton = ({id, label, icon, activeTab, setActiveTab}) => {
-                const Icon = icon;
-            return (
-            <button
-                onClick={() => setActiveTab(id)}
-                className={`p-3 rounded-lg text-left font-medium flex items-center gap-3 transition-all text-sm ${activeTab === id ? 'bg-italian-red text-white shadow-md' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}`}
-            >
-                <Icon size={18} /> {label}
-            </button>
-            );
-            };
-
-            const InputGroup = ({label, name, value, onChange, placeholder, type = "text", colSpan = 1}) => (
-            <div className={colSpan > 1 ? `col-span-${colSpan}` : ''}>
-                <label className="block text-xs font-bold mb-1 text-stone-500 dark:text-stone-400 uppercase tracking-wider">{label}</label>
-                <input
-                    type={type}
-                    name={name}
-                    value={value}
-                    onChange={onChange}
-                    className="w-full p-2 rounded border border-stone-300 dark:border-stone-600 bg-transparent dark:text-white outline-none focus:border-italian-red transition-colors text-sm"
-                    placeholder={placeholder}
-                />
-            </div>
-            );
 
             export default Settings;
