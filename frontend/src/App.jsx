@@ -16,6 +16,7 @@ import Customers from './pages/admin/Customers';
 import Coupons from './pages/admin/Coupons';
 import Settings from './pages/admin/Settings';
 import OrderNotificationListener from './components/OrderNotificationListener';
+import AIAgent from './pages/admin/AIAgent';
 
 
 
