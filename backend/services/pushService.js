@@ -6,8 +6,8 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // VAPID Keys (Generated dynamically for this project)
-const publicVapidKey = 'BEOJRvySures7PvdtReM-3Ld1m_5M5XvV_TDMmy5sx-ZPCLLSubYC8xr94RooXb7T-P0w8y4fR_m-Q1V92hYv7M';
-const privateVapidKey = '2-NNs1AM-CO55pnQTP08t46Wf33Xy023P26E9sQy-bWE';
+const publicVapidKey = 'BBiGySh7odgAmNF4Zk7AnvtjM504dcZfuLcdxh5NZ8xB8MNxFj-1XXvy1Sx60YodVQXnoCfPbSKwIw6xizc-v4U';
+const privateVapidKey = 'CedhmszA_d763Qw4o06UZ-pSQFJyj-cAyOP5RtjYvSY';
 
 webpush.setVapidDetails(
     'mailto:fabio@example.com',
