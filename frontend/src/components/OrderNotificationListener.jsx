@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabase';
 const OrderNotificationListener = () => {
     useEffect(() => {
         // Request notification permission immediately
-        if (Notification.permission === 'default') {
+        // Request notification permission immediately
+        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
             Notification.requestPermission();
         }
 
