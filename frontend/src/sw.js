@@ -16,6 +16,7 @@ self.addEventListener('push', (event) => {
         badge: '/vite.svg',
         data: { url: data.url || '/admin/orders' },
         vibrate: [200, 100, 200, 100, 200, 100, 200], // Vibration pattern
+        requireInteraction: true, // Keep notification until user interacts (good for lock screen)
         actions: [
             { action: 'open', title: 'Ver Pedido' }
         ]

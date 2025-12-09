@@ -486,7 +486,7 @@ class AIService {
 
             // Push Notification
             let pushBody = `R$ ${total.toFixed(2)} - ${customer.name}`;
-            
+
             // Adicionar itens
             if (itemsToInsert && itemsToInsert.length > 0) {
                 const itemsSummary = itemsToInsert.map(i => `${i.quantity}x ${i.product_name || i.name}`).join(', ');
@@ -1150,11 +1150,23 @@ REGRAS IMPORTANTES:
             message += '\n\n😋 Bom apetite! Esperamos que goste.';
         }
 
-        const remoteJid = `${phone}@s.whatsapp.net`;
+    } else {
+    message += `\n\nSeu pedido está: *${statusLabel}*`;
+}
 
-        await this.saveMessage(phone, 'assistant', message);
+// Sanitize phone: remove non-digits
+let cleanPhone = phone.replace(/\D/g, '');
+// BASIC VALIDATION: if it doesn't start with country code (e.g. 55 for Brazil), add it.
+// Assuming most are BR for this user. If length is 10 or 11 (DDD + number), prepend 55.
+if (cleanPhone.length >= 10 && cleanPhone.length <= 11) {
+    cleanPhone = '55' + cleanPhone;
+}
 
-        await this.sendMessage(remoteJid, message);
+const remoteJid = `${cleanPhone}@s.whatsapp.net`;
+
+await this.saveMessage(cleanPhone, 'assistant', message);
+
+await this.sendMessage(remoteJid, message);
     }
 }
 
