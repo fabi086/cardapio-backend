@@ -125,7 +125,13 @@ const Orders = () => {
                         status: newStatus,
                         orderId: order.order_number || order.id.slice(0, 8)
                     })
-                }).catch(err => console.error('Failed to notify AI:', err));
+                })
+                    .then(async (res) => {
+                        const data = await res.json();
+                        if (!data.success) console.error('Falha notificação:', data);
+                        // Optional: alert('Notificação enviada ao cliente!'); 
+                    })
+                    .catch(err => alert('Erro ao notificar cliente: ' + err.message));
             }
 
         } catch (error) {
