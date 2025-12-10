@@ -658,8 +658,14 @@ const Settings = () => {
                                                     headers: { 'Content-Type': 'application/json' },
                                                     body: JSON.stringify({ message: 'Isso é um teste de Notificação Push!' })
                                                 });
-                                                const data = await res.json();
-                                                alert(data.success ? 'Notificação enviada! Veja sua barra de status.' : 'Falha: ' + (data.error || JSON.stringify(data)));
+                                                const text = await res.text();
+                                                try {
+                                                    const data = JSON.parse(text);
+                                                    alert(data.success ? 'Notificação enviada! Veja sua barra de status.' : 'Falha: ' + (data.error || JSON.stringify(data)));
+                                                } catch (jsonError) {
+                                                    alert('Erro do Servidor (Não é JSON): ' + text.substring(0, 200));
+                                                    console.error('Resposta bruta:', text);
+                                                }
                                             } catch (e) {
                                                 alert('Erro de conexão: ' + e.message);
                                             }
