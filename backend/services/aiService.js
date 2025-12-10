@@ -1141,32 +1141,33 @@ REGRAS IMPORTANTES:
         };
 
         const statusLabel = statusMap[status] || status;
+        let message = `🔔 *Atualização do Pedido #${orderId}*`;
 
-        let message = `🔔 *Atualização do Pedido #${orderId}*\n\nSeu pedido está: *${statusLabel}*`;
-
-        if (status === 'out_for_delivery' || status === 'Saiu para entrega') {
-            message += '\n\n🛵 Nosso entregador já está a caminho!';
+        if (status === 'approved') {
+            message += `\n\n✅ *Pedido Aprovado!* Começaremos a preparar em breve.`;
+        } else if (status === 'out_for_delivery' || status === 'Saiu para entrega') {
+            message += `\n\n🛵 *Saiu para Entrega!* Nosso entregador está a caminho.`;
+        } else if (status === 'cancelled') {
+            message += `\n\n❌ *Pedido Cancelado.* Se tiver dúvidas, entre em contato.`;
         } else if (status === 'delivered' || status === 'Entregue') {
-            message += '\n\n😋 Bom apetite! Esperamos que goste.';
+            message += `\n\n😋 *Entregue!* Bom apetite.`;
+        } else {
+            message += `\n\nSeu pedido está: *${statusLabel}*`;
         }
 
-    } else {
-    message += `\n\nSeu pedido está: *${statusLabel}*`;
-}
+        // Sanitize phone: remove non-digits
+        let cleanPhone = phone.replace(/\D/g, '');
+        // BASIC VALIDATION: if it doesn't start with country code (e.g. 55 for Brazil), add it.
+        // Assuming most are BR for this user. If length is 10 or 11 (DDD + number), prepend 55.
+        if (cleanPhone.length >= 10 && cleanPhone.length <= 11) {
+            cleanPhone = '55' + cleanPhone;
+        }
 
-// Sanitize phone: remove non-digits
-let cleanPhone = phone.replace(/\D/g, '');
-// BASIC VALIDATION: if it doesn't start with country code (e.g. 55 for Brazil), add it.
-// Assuming most are BR for this user. If length is 10 or 11 (DDD + number), prepend 55.
-if (cleanPhone.length >= 10 && cleanPhone.length <= 11) {
-    cleanPhone = '55' + cleanPhone;
-}
+        const remoteJid = `${cleanPhone}@s.whatsapp.net`;
 
-const remoteJid = `${cleanPhone}@s.whatsapp.net`;
+        await this.saveMessage(cleanPhone, 'assistant', message);
 
-await this.saveMessage(cleanPhone, 'assistant', message);
-
-await this.sendMessage(remoteJid, message);
+        await this.sendMessage(remoteJid, message);
     }
 }
 
