@@ -14,14 +14,25 @@ class AIService {
     }
 
     async loadSettings() {
-        const { data, error } = await supabase
+        const { data: aiData, error: aiError } = await supabase
             .from('ai_integration_settings')
             .select('*')
             .single();
 
-        if (data) {
-            this.settings = data;
-            const apiKey = data.openai_api_key ? data.openai_api_key.trim() : process.env.OPENAI_API_KEY;
+        const { data: businessData, error: businessError } = await supabase
+            .from('business_settings')
+            .select('whatsapp')
+            .single();
+
+        if (aiData) {
+            this.settings = { ...aiData };
+
+            // Merge whatsapp from business settings
+            if (businessData && businessData.whatsapp) {
+                this.settings.whatsapp = businessData.whatsapp;
+            }
+
+            const apiKey = aiData.openai_api_key ? aiData.openai_api_key.trim() : process.env.OPENAI_API_KEY;
 
             if (apiKey) {
                 this.openai = new OpenAI({ apiKey: apiKey });
@@ -1136,41 +1147,93 @@ REGRAS IMPORTANTES:
             return;
         }
 
+        // 1. Fetch Full Order Details
+        let orderDetails = null;
+        let itemsList = '';
+        let addressText = '';
+
+        try {
+            // Check if orderId is UUID or Number
+            let query = supabase.from('orders').select('*, order_items(*)');
+            if (typeof orderId === 'string' && orderId.length > 20) {
+                query = query.eq('id', orderId);
+            } else {
+                query = query.eq('order_number', orderId);
+            }
+
+            const { data, error } = await query.single();
+
+            if (!error && data) {
+                orderDetails = data;
+
+                // Format Items
+                if (orderDetails.order_items && orderDetails.order_items.length > 0) {
+                    itemsList = '\n\🛒 *Itens do Pedido:*\n' + orderDetails.order_items.map(i => `- ${i.quantity}x ${i.product_name || i.name}`).join('\n');
+                }
+
+                // Format Address (if delivery)
+                if (orderDetails.delivery_type === 'delivery') {
+                    const addr = orderDetails.customer_address || `${orderDetails.customer_street}, ${orderDetails.customer_number}`;
+                    if (addr) addressText = `\n📍 *Entrega em:* ${addr}`;
+                } else if (orderDetails.delivery_type === 'pickup') {
+                    addressText = '\n🏃 *Retirada no Balcão*';
+                }
+            } else {
+                console.error('[sendNotification] Erro ao buscar detalhes do pedido:', error?.message);
+            }
+        } catch (fetchErr) {
+            console.error('[sendNotification] Erro fetch details:', fetchErr);
+        }
+
         const statusMap = {
-            'pending': 'Pendente',
-            'approved': 'Aprovado',
-            'preparing': 'Preparando',
-            'ready': 'Pronto para Entrega',
-            'out_for_delivery': 'Saiu para Entrega',
-            'delivered': 'Entregue',
-            'cancelled': 'Cancelado'
+            'pending': '⏳ Pendente',
+            'approved': '✅ Aprovado',
+            'preparing': '🔥 Preparando',
+            'ready': '🥡 Pronto para Entrega/Retirada',
+            'out_for_delivery': '🛵 Saiu para Entrega',
+            'delivered': '😋 Entregue',
+            'cancelled': '❌ Cancelado'
         };
 
         const statusLabel = statusMap[status] || status;
-        let message = `🔔 *Atualização do Pedido #${orderId}*`;
 
+        let message = `🔔 *Atualização do Pedido #${orderDetails ? (orderDetails.order_number || orderId) : orderId}*`;
+        message += `\nStatus: *${statusLabel}*`;
+
+        // Custom messages based on status
         if (status === 'approved') {
-            message += `\n\n✅ *Pedido Aprovado!* Começaremos a preparar em breve.`;
-        } else if (status === 'out_for_delivery' || status === 'Saiu para entrega') {
-            message += `\n\n🛵 *Saiu para Entrega!* Nosso entregador está a caminho.`;
+            message += `\n\nOba! Seu pedido foi aceito e já vai para a cozinha.`;
+        } else if (status === 'preparing') {
+            message += `\n\nEstamos preparando tudo com carinho! 🔥`;
+        } else if (status === 'ready') {
+            message += `\n\nSeu pedido está pronto!`;
+            if (orderDetails?.delivery_type === 'pickup') message += ` Pode vir buscar.`;
+        } else if (status === 'out_for_delivery') {
+            message += `\n\nNosso entregador já está a caminho! 🛵`;
+        } else if (status === 'delivered') {
+            message += `\n\nPedido entregue. Bom apetite! 😋`;
         } else if (status === 'cancelled') {
-            message += `\n\n❌ *Pedido Cancelado.* Se tiver dúvidas, entre em contato.`;
-        } else if (status === 'delivered' || status === 'Entregue') {
-            message += `\n\n😋 *Entregue!* Bom apetite.`;
-        } else {
-            message += `\n\nSeu pedido está: *${statusLabel}*`;
+            message += `\n\nQue pena! O pedido foi cancelado. Se tiver dúvidas, entre em contato.`;
         }
 
-        // Sanitize phone: remove non-digits
+        // Add details if available
+        if (itemsList) message += `\n${itemsList}`;
+
+        if (orderDetails) {
+            message += `\n\n💰 *Total:* R$ ${orderDetails.total.toFixed(2)}`;
+            if (orderDetails.delivery_fee > 0) message += ` (Taxa: R$ ${orderDetails.delivery_fee.toFixed(2)})`;
+        }
+
+        if (addressText) message += addressText;
+
+        // Sanitize phone
         let cleanPhone = phone.replace(/\D/g, '');
-        // BASIC VALIDATION: if it doesn't start with country code (e.g. 55 for Brazil), add it.
-        // Assuming most are BR for this user. If length is 10 or 11 (DDD + number), prepend 55.
         if (cleanPhone.length >= 10 && cleanPhone.length <= 11) {
             cleanPhone = '55' + cleanPhone;
         }
 
         const remoteJid = `${cleanPhone}@s.whatsapp.net`;
-        console.log(`[sendNotification] Enviando mensagem para ${remoteJid}`);
+        console.log(`[sendNotification] Enviando mensagem detalhada para ${remoteJid}`);
 
         await this.saveMessage(cleanPhone, 'assistant', message);
 

@@ -115,7 +115,7 @@ const Orders = () => {
             // Notify AI Agent
             const order = orders.find(o => o.id === orderId);
             if (order && order.customer_phone) {
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+                const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3002' : 'https://cardapio-backend-jzit.vercel.app');
                 // Don't await this, let it run in background
                 fetch(`${API_URL}/api/ai/notify-status`, {
                     method: 'POST',

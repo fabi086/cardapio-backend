@@ -7,35 +7,29 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function inspect() {
-    console.log('Inspecting customers table...');
-    const { data: customers, error: custError } = await supabase
-        .from('customers')
+
+    // Removed customer/order/product inspection for brevity checking settings only
+
+
+    console.log('Inspecting ai_integration_settings table...');
+    const { data: aiSettings, error: aiError } = await supabase
+        .from('ai_integration_settings')
         .select('*')
         .limit(1);
 
-    if (custError) console.error('Error customers:', custError);
-    else if (customers.length > 0) console.log('Customers columns:', Object.keys(customers[0]));
-    else console.log('Customers table empty, cannot infer columns.');
+    if (aiError) console.error('Error ai_integration_settings:', aiError);
+    else if (aiSettings && aiSettings.length > 0) console.log('AI Settings columns:', Object.keys(aiSettings[0]));
+    else console.log('ai_integration_settings table empty/missing.');
 
-    console.log('Inspecting orders table...');
-    const { data: orders, error: ordError } = await supabase
-        .from('orders')
+    console.log('Inspecting business_settings table...');
+    const { data: busSettings, error: busError } = await supabase
+        .from('business_settings')
         .select('*')
         .limit(1);
 
-    if (ordError) console.error('Error orders:', ordError);
-    else if (orders.length > 0) console.log('Orders columns:', Object.keys(orders[0]));
-    else console.log('Orders table empty, cannot infer columns.');
-
-    console.log('Inspecting products table...');
-    const { data: products, error: prodError } = await supabase
-        .from('products')
-        .select('*')
-        .limit(1);
-
-    if (prodError) console.error('Error products:', prodError);
-    else if (products.length > 0) console.log('Products columns:', Object.keys(products[0]));
-    else console.log('Products table empty, cannot infer columns.');
+    if (busError) console.error('Error business_settings:', busError);
+    else if (busSettings && busSettings.length > 0) console.log('Business Settings columns:', Object.keys(busSettings[0]));
+    else console.log('business_settings table empty/missing.');
 }
 
 inspect();
