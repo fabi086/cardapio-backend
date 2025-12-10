@@ -1102,17 +1102,19 @@ REGRAS IMPORTANTES:
         }
 
         try {
-            await axios.post(
-                `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`,
-                {
-                    number: remoteJid.replace('@s.whatsapp.net', ''),
-                    text: text,
-                    options: {
-                        delay: 1200,
-                        presence: 'composing',
-                        linkPreview: false
-                    }
-                },
+            const url = `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`;
+            const payload = {
+                number: remoteJid.replace('@s.whatsapp.net', ''),
+                text: text,
+                options: {
+                    delay: 1200,
+                    presence: 'composing',
+                    linkPreview: false
+                }
+            };
+            console.log(`[sendMessage] Sending to ${url} | Number: ${payload.number}`);
+
+            await axios.post(url, payload,
                 {
                     headers: {
                         'apikey': this.settings.evolution_api_key,
@@ -1127,8 +1129,12 @@ REGRAS IMPORTANTES:
     }
 
     async sendNotification(phone, status, orderId) {
+        console.log(`[sendNotification] Iniciando notificação para ${phone}, status: ${status}, orderId: ${orderId}`);
         await this.loadSettings();
-        if (!this.settings) return;
+        if (!this.settings) {
+            console.error('[sendNotification] Configurações não carregadas.');
+            return;
+        }
 
         const statusMap = {
             'pending': 'Pendente',
@@ -1164,10 +1170,16 @@ REGRAS IMPORTANTES:
         }
 
         const remoteJid = `${cleanPhone}@s.whatsapp.net`;
+        console.log(`[sendNotification] Enviando mensagem para ${remoteJid}`);
 
         await this.saveMessage(cleanPhone, 'assistant', message);
 
-        await this.sendMessage(remoteJid, message);
+        try {
+            await this.sendMessage(remoteJid, message);
+            console.log('[sendNotification] Mensagem enviada com sucesso.');
+        } catch (error) {
+            console.error('[sendNotification] Erro ao enviar mensagem:', error.message);
+        }
     }
 }
 
