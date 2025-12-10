@@ -9,11 +9,16 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const publicVapidKey = 'BBiGySh7odgAmNF4Zk7AnvtjM504dcZfuLcdxh5NZ8xB8MNxFj-1XXvy1Sx60YodVQXnoCfPbSKwIw6xizc-v4U';
 const privateVapidKey = 'CedhmszA_d763Qw4o06UZ-pSQFJyj-cAyOP5RtjYvSY';
 
-webpush.setVapidDetails(
-    'mailto:fabio@example.com',
-    publicVapidKey,
-    privateVapidKey
-);
+try {
+    webpush.setVapidDetails(
+        'mailto:fabio@example.com',
+        publicVapidKey,
+        privateVapidKey
+    );
+    console.log('VAPID details set successfully');
+} catch (error) {
+    console.error('Failed to set VAPID details:', error);
+}
 
 class PushService {
     getPublicKey() {
