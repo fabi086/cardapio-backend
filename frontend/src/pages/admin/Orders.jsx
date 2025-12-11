@@ -458,10 +458,14 @@ const Orders = () => {
                         {/* Detailed Content (Always visible in Grid now) */}
                         <div className={`p-3 bg-stone-50 dark:bg-stone-800/30 flex-1 overflow-y-auto text-sm ${viewMode === 'grid' ? 'max-h-[200px]' : 'hidden md:block md:w-1/3 md:border-l md:border-stone-200 dark:md:border-stone-800'}`}>
 
-                            {/* Address */}
+                            {/* Address or Table */}
                             <div className="mb-3 pb-2 border-b border-stone-200 dark:border-stone-700">
-                                <p className="text-stone-500 text-xs font-bold uppercase mb-0.5">Endereço</p>
-                                <p className="text-stone-700 dark:text-stone-300 leading-tight">{order.customer_address}</p>
+                                <p className="text-stone-500 text-xs font-bold uppercase mb-0.5">
+                                    {order.table_number ? 'Local' : 'Endereço'}
+                                </p>
+                                <p className={`leading-tight ${order.table_number ? 'text-xl font-bold text-italian-red' : 'text-stone-700 dark:text-stone-300'}`}>
+                                    {order.table_number ? `MESA ${order.table_number}` : order.customer_address}
+                                </p>
                             </div>
 
                             {/* Items */}
@@ -479,7 +483,7 @@ const Orders = () => {
                             {/* Fees & Payment Details */}
                             <div className="flex justify-between items-end text-xs">
                                 <div>
-                                    {order.delivery_fee > 0 && (
+                                    {!order.table_number && order.delivery_fee > 0 && (
                                         <p className="text-stone-500">Taxa: R$ {Number(order.delivery_fee).toFixed(2)}</p>
                                     )}
                                     {order.change_for && (

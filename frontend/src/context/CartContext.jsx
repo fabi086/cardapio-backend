@@ -97,6 +97,22 @@ export const CartProvider = ({ children }) => {
 
     const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
 
+    const [tableNumber, setTableNumber] = useState(null);
+
+    useEffect(() => {
+        // Check URL for table param
+        const params = new URLSearchParams(window.location.search);
+        const table = params.get('table');
+        if (table) {
+            setTableNumber(table);
+            sessionStorage.setItem('tableNumber', table);
+        } else {
+            // Check session storage
+            const savedTable = sessionStorage.getItem('tableNumber');
+            if (savedTable) setTableNumber(savedTable);
+        }
+    }, []);
+
     const submitOrder = async (customerData) => {
         try {
             // 1. Gerar order_number sequencial
@@ -125,7 +141,9 @@ export const CartProvider = ({ children }) => {
                     total: cartTotal + (customerData.deliveryFee || 0),
                     discount: discountAmount,
                     coupon_code: appliedCoupon ? appliedCoupon.code : null,
-                    status: 'Pendente'
+                    status: 'Pendente',
+                    order_type: tableNumber ? 'dine_in' : 'delivery',
+                    table_number: tableNumber
                 }])
                 .select()
                 .single();
@@ -165,8 +183,8 @@ export const CartProvider = ({ children }) => {
                             order_number: orderNumber,
                             customer_name: customerData.name,
                             total: cartTotal + (customerData.deliveryFee || 0),
-                            // Fix: Check for address to determine delivery type, as deliveryFee might be 0 (free shipping)
-                            delivery_type: (customerData.address || customerData.street || customerData.cep) ? 'delivery' : 'pickup'
+                            delivery_type: tableNumber ? 'dine_in' : ((customerData.address || customerData.street || customerData.cep) ? 'delivery' : 'pickup'),
+                            table_number: tableNumber
                         }
                     })
                 }).catch(err => console.error('Failed to trigger admin notification:', err));
@@ -202,6 +220,7 @@ export const CartProvider = ({ children }) => {
                 removeCoupon,
                 cartCount,
                 submitOrder,
+                tableNumber
             }}
         >
             {children}

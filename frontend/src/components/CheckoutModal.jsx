@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, MapPin, User, CreditCard, Banknote, Phone, Loader, MapPinned, Home, Search } from 'lucide-react';
+import { X, MapPin, User, CreditCard, Banknote, Phone, Loader, MapPinned, Home, Search, Utensils } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -7,7 +7,7 @@ import { useViaCep } from '../hooks/useViaCep';
 
 
 const CheckoutModal = ({ isOpen, onClose }) => {
-    const { cartTotal, submitOrder } = useCart();
+    const { cartTotal, submitOrder, tableNumber } = useCart();
     const navigate = useNavigate();
     const { searchCep, formatCep, isValidCep, loading: loadingCep, error: cepError, clearError } = useViaCep();
 
@@ -56,6 +56,8 @@ const CheckoutModal = ({ isOpen, onClose }) => {
     };
 
     const calculateDeliveryFee = async (cep) => {
+        if (tableNumber) { setDeliveryFee(0); return; } // No fee for tables
+
         if (!cep || cep.replace(/\D/g, '').length < 8) {
             setDeliveryFee(0);
             return;
@@ -120,6 +122,14 @@ const CheckoutModal = ({ isOpen, onClose }) => {
         ).join('\n');
 
         const total = order.total.toFixed(2);
+
+        let header = '';
+        if (tableNumber) {
+            header = `🍽️ *PEDIDO NA MESA ${tableNumber}*`;
+        } else {
+            header = `🔔 *NOVO PEDIDO #${order.order_number || order.id.slice(0, 8)}*`;
+        }
+
         const fee = order.deliveryFee ? `\n🚚 *Taxa de Entrega:* R$ ${order.deliveryFee.toFixed(2)}` : '';
 
         let paymentInfo = '';
@@ -127,11 +137,18 @@ const CheckoutModal = ({ isOpen, onClose }) => {
         else if (order.paymentMethod === 'card') paymentInfo = 'Cartão';
         else if (order.paymentMethod === 'cash') paymentInfo = `Dinheiro${order.changeFor ? ` (Troco para ${order.changeFor})` : ''}`;
 
-        return `🔔 *NOVO PEDIDO #${order.order_number || order.id.slice(0, 8)}*
+        let addressInfo = '';
+        if (tableNumber) {
+            addressInfo = `📍 *Local:* MESA ${tableNumber}`;
+        } else {
+            addressInfo = `📍 *Endereço:* ${customer.address}`;
+        }
+
+        return `${header}
 --------------------------------
 👤 *Cliente:* ${customer.name}
 📞 *Telefone:* ${customer.phone}
-📍 *Endereço:* ${customer.address}
+${addressInfo}
 --------------------------------
 🛒 *PEDIDO:*
 ${itemsList}
@@ -194,6 +211,8 @@ _Pedido enviado via Cardápio Digital_`;
 
     // Monta endereço completo a partir dos campos estruturados
     const buildFullAddress = () => {
+        if (tableNumber) return `Mesa ${tableNumber}`;
+
         if (addressMode === 'manual') {
             return formData.address;
         }
@@ -222,15 +241,15 @@ _Pedido enviado via Cardápio Digital_`;
             const customerData = {
                 phone: formData.phone,
                 name: formData.name,
-                address: fullAddress,
-                // Salvar campos estruturados também
-                cep: formData.cep || null,
-                street: formData.street || null,
-                number: formData.number || null,
-                complement: formData.complement || null,
-                neighborhood: formData.neighborhood || null,
-                city: formData.city || null,
-                state: formData.state || null,
+                address: fullAddress, // Will be "Mesa X" if table mode
+                // Salvar campos estruturados também (only if not table)
+                cep: tableNumber ? null : (formData.cep || null),
+                street: tableNumber ? null : (formData.street || null),
+                number: tableNumber ? null : (formData.number || null),
+                complement: tableNumber ? null : (formData.complement || null),
+                neighborhood: tableNumber ? null : (formData.neighborhood || null),
+                city: tableNumber ? null : (formData.city || null),
+                state: tableNumber ? null : (formData.state || null),
                 updated_at: new Date()
             };
 
@@ -276,9 +295,10 @@ _Pedido enviado via Cardápio Digital_`;
             const order = await submitOrder({
                 ...formData,
                 address: fullAddress,
-                deliveryFee,
-                cep: formData.cep,
-                customer_id: currentCustomerId
+                deliveryFee: tableNumber ? 0 : deliveryFee,
+                cep: tableNumber ? null : formData.cep,
+                customer_id: currentCustomerId,
+                table_number: tableNumber || null, // Add table_number to order
             });
 
 
@@ -288,8 +308,8 @@ _Pedido enviado via Cardápio Digital_`;
             // 3. Redirect to WhatsApp
             if (storeSettings?.whatsapp) {
                 const message = formatWhatsAppMessage(
-                    { ...order, items: order.items || [], paymentMethod: formData.paymentMethod, changeFor: formData.changeFor, deliveryFee },
-                    formData,
+                    { ...order, items: order.items || [], paymentMethod: formData.paymentMethod, changeFor: formData.changeFor, deliveryFee: tableNumber ? 0 : deliveryFee },
+                    { ...formData, address: fullAddress },
                     storeSettings
                 );
 
@@ -313,7 +333,7 @@ _Pedido enviado via Cardápio Digital_`;
         }
     };
 
-    const finalTotal = cartTotal + (deliveryFee || 0);
+    const finalTotal = cartTotal + (tableNumber ? 0 : (deliveryFee || 0));
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -324,8 +344,15 @@ _Pedido enviado via Cardápio Digital_`;
 
             <div className="relative w-full max-w-md bg-white dark:bg-stone-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                 <div className="p-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-stone-900/50">
-                    <h2 className="text-xl font-display text-stone-800 dark:text-stone-100">
-                        Finalizar Pedido
+                    <h2 className="text-xl font-display text-stone-800 dark:text-stone-100 flex items-center gap-2">
+                        {tableNumber ? (
+                            <>
+                                <Utensils className="text-italian-red" size={24} />
+                                Pedido na Mesa {tableNumber}
+                            </>
+                        ) : (
+                            'Finalizar Pedido'
+                        )}
                     </h2>
                     <button
                         onClick={onClose}
@@ -336,9 +363,20 @@ _Pedido enviado via Cardápio Digital_`;
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+
+                    {tableNumber && (
+                        <div className="bg-italian-green/10 border border-italian-green text-italian-green p-3 rounded-xl flex items-center gap-3 mb-4">
+                            <Utensils size={24} />
+                            <div>
+                                <p className="font-bold">Modo Restaurante</p>
+                                <p className="text-sm opacity-80">Você está na Mesa {tableNumber}. Não é necessário endereço.</p>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="space-y-2">
                         <label className="text-sm font-bold text-stone-600 dark:text-stone-400 flex items-center gap-2">
-                            <Phone size={16} /> Seu Telefone
+                            <Phone size={16} /> Seu Telefone {tableNumber && '(Para contato)'}
                         </label>
                         <div className="relative">
                             <input
@@ -372,150 +410,152 @@ _Pedido enviado via Cardápio Digital_`;
                         />
                     </div>
 
-                    <div className="space-y-3">
-                        <label className="text-sm font-bold text-stone-600 dark:text-stone-400 flex items-center gap-2">
-                            <MapPin size={16} /> Endereço de Entrega
-                        </label>
+                    {!tableNumber && (
+                        <div className="space-y-3">
+                            <label className="text-sm font-bold text-stone-600 dark:text-stone-400 flex items-center gap-2">
+                                <MapPin size={16} /> Endereço de Entrega
+                            </label>
 
-                        {/* Toggle entre modos */}
-                        <div className="flex gap-2 p-1 bg-stone-100 dark:bg-stone-800 rounded-lg">
-                            <button
-                                type="button"
-                                onClick={() => setAddressMode('cep')}
-                                className={`flex-1 py-2 px-3 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 ${addressMode === 'cep'
-                                    ? 'bg-white dark:bg-stone-700 text-italian-red shadow-sm'
-                                    : 'text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'
-                                    }`}
-                            >
-                                <MapPinned size={16} />
-                                Buscar por CEP
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setAddressMode('manual')}
-                                className={`flex-1 py-2 px-3 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 ${addressMode === 'manual'
-                                    ? 'bg-white dark:bg-stone-700 text-italian-red shadow-sm'
-                                    : 'text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'
-                                    }`}
-                            >
-                                <Home size={16} />
-                                Endereço Manual
-                            </button>
+                            {/* Toggle entre modos */}
+                            <div className="flex gap-2 p-1 bg-stone-100 dark:bg-stone-800 rounded-lg">
+                                <button
+                                    type="button"
+                                    onClick={() => setAddressMode('cep')}
+                                    className={`flex-1 py-2 px-3 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 ${addressMode === 'cep'
+                                        ? 'bg-white dark:bg-stone-700 text-italian-red shadow-sm'
+                                        : 'text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'
+                                        }`}
+                                >
+                                    <MapPinned size={16} />
+                                    Buscar por CEP
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setAddressMode('manual')}
+                                    className={`flex-1 py-2 px-3 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 ${addressMode === 'manual'
+                                        ? 'bg-white dark:bg-stone-700 text-italian-red shadow-sm'
+                                        : 'text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'
+                                        }`}
+                                >
+                                    <Home size={16} />
+                                    Endereço Manual
+                                </button>
+                            </div>
+
+                            {/* Modo CEP */}
+                            {addressMode === 'cep' && (
+                                <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                                    {/* Campo de CEP com busca */}
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-stone-500 uppercase">CEP</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="00000-000"
+                                                maxLength={9}
+                                                className="flex-1 p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all"
+                                                value={formData.cep}
+                                                onChange={handleCepChange}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleCepSearch}
+                                                disabled={!isValidCep(formData.cep) || loadingCep}
+                                                className="px-4 py-3 rounded-xl bg-italian-red text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition-all flex items-center gap-2"
+                                            >
+                                                {loadingCep ? <Loader className="animate-spin" size={16} /> : <Search size={16} />}
+                                                Buscar
+                                            </button>
+                                        </div>
+                                        {cepError && (
+                                            <p className="text-xs text-red-500 flex items-center gap-1">
+                                                ⚠️ {cepError}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Campos preenchidos automaticamente */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="col-span-2">
+                                            <label className="text-xs font-bold text-stone-500 uppercase">Rua</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Nome da rua"
+                                                className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all"
+                                                value={formData.street}
+                                                onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-stone-500 uppercase">Número *</label>
+                                            <input
+                                                required
+                                                type="text"
+                                                placeholder="123"
+                                                className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all"
+                                                value={formData.number}
+                                                onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-stone-500 uppercase">Complemento</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Apto 45"
+                                                className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all"
+                                                value={formData.complement}
+                                                onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="col-span-2">
+                                            <label className="text-xs font-bold text-stone-500 uppercase">Bairro</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Nome do bairro"
+                                                className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all"
+                                                value={formData.neighborhood}
+                                                onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-stone-500 uppercase">Cidade</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Cidade"
+                                                className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all"
+                                                value={formData.city}
+                                                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-stone-500 uppercase">Estado</label>
+                                            <input
+                                                type="text"
+                                                placeholder="UF"
+                                                maxLength={2}
+                                                className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all uppercase"
+                                                value={formData.state}
+                                                onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Modo Manual */}
+                            {addressMode === 'manual' && (
+                                <div className="animate-in fade-in slide-in-from-top-2">
+                                    <textarea
+                                        required
+                                        placeholder="Rua, Número, Bairro e Complemento"
+                                        className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all h-24 resize-none"
+                                        value={formData.address}
+                                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                    />
+                                </div>
+                            )}
                         </div>
-
-                        {/* Modo CEP */}
-                        {addressMode === 'cep' && (
-                            <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
-                                {/* Campo de CEP com busca */}
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-stone-500 uppercase">CEP</label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            placeholder="00000-000"
-                                            maxLength={9}
-                                            className="flex-1 p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all"
-                                            value={formData.cep}
-                                            onChange={handleCepChange}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={handleCepSearch}
-                                            disabled={!isValidCep(formData.cep) || loadingCep}
-                                            className="px-4 py-3 rounded-xl bg-italian-red text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700 transition-all flex items-center gap-2"
-                                        >
-                                            {loadingCep ? <Loader className="animate-spin" size={16} /> : <Search size={16} />}
-                                            Buscar
-                                        </button>
-                                    </div>
-                                    {cepError && (
-                                        <p className="text-xs text-red-500 flex items-center gap-1">
-                                            ⚠️ {cepError}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Campos preenchidos automaticamente */}
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="col-span-2">
-                                        <label className="text-xs font-bold text-stone-500 uppercase">Rua</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Nome da rua"
-                                            className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all"
-                                            value={formData.street}
-                                            onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-stone-500 uppercase">Número *</label>
-                                        <input
-                                            required
-                                            type="text"
-                                            placeholder="123"
-                                            className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all"
-                                            value={formData.number}
-                                            onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-stone-500 uppercase">Complemento</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Apto 45"
-                                            className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all"
-                                            value={formData.complement}
-                                            onChange={(e) => setFormData({ ...formData, complement: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="col-span-2">
-                                        <label className="text-xs font-bold text-stone-500 uppercase">Bairro</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Nome do bairro"
-                                            className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all"
-                                            value={formData.neighborhood}
-                                            onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-stone-500 uppercase">Cidade</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Cidade"
-                                            className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all"
-                                            value={formData.city}
-                                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-stone-500 uppercase">Estado</label>
-                                        <input
-                                            type="text"
-                                            placeholder="UF"
-                                            maxLength={2}
-                                            className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all uppercase"
-                                            value={formData.state}
-                                            onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Modo Manual */}
-                        {addressMode === 'manual' && (
-                            <div className="animate-in fade-in slide-in-from-top-2">
-                                <textarea
-                                    required
-                                    placeholder="Rua, Número, Bairro e Complemento"
-                                    className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all h-24 resize-none"
-                                    value={formData.address}
-                                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                />
-                            </div>
-                        )}
-                    </div>
+                    )}
 
                     <div className="space-y-2">
                         <label className="text-sm font-bold text-stone-600 dark:text-stone-400 flex items-center gap-2">
@@ -578,7 +618,7 @@ _Pedido enviado via Cardápio Digital_`;
                             <span className="text-stone-500">Subtotal</span>
                             <span className="font-bold text-stone-700 dark:text-stone-300">R$ {cartTotal.toFixed(2)}</span>
                         </div>
-                        {deliveryFee !== null && (
+                        {deliveryFee !== null && !tableNumber && (
                             <div className="flex justify-between items-center text-sm text-green-600">
                                 <span>Taxa de Entrega</span>
                                 <span>+ R$ {deliveryFee.toFixed(2)}</span>

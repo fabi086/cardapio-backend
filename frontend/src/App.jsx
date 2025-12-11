@@ -12,6 +12,7 @@ import Categories from './pages/admin/Categories';
 import Banners from './pages/admin/Banners';
 import OrderTracking from './pages/OrderTracking';
 import Orders from './pages/admin/Orders';
+import Tables from './pages/admin/Tables';
 import Customers from './pages/admin/Customers';
 import Coupons from './pages/admin/Coupons';
 import Settings from './pages/admin/Settings';
@@ -39,6 +40,7 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="orders" element={<Orders />} />
               <Route path="customers" element={<Customers />} />
+              <Route path="tables" element={<Tables />} />
               <Route path="products" element={<Products />} />
               <Route path="products/new" element={<ProductForm />} />
               <Route path="products/:id" element={<ProductForm />} />
