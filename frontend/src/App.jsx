@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { BusinessSettingsProvider } from './context/BusinessSettingsContext';
+import { BusinessSettingsProvider } from './hooks/useBusinessSettings';
 import AdminLayout from './layouts/AdminLayout';
 import Home from './pages/Home';
 import Login from './pages/admin/Login';
