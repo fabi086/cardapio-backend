@@ -116,6 +116,25 @@ router.post('/config', async (req, res) => {
     }
 });
 
+// Generic Send Message Endpoint (Campaigns)
+router.post('/send-message', async (req, res) => {
+    try {
+        const { phone, message, mediaUrl } = req.body;
+
+        if (!phone || !message) {
+            return res.status(400).json({ error: 'Telefone e mensagem são obrigatórios' });
+        }
+
+        const remoteJid = `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
+        await aiService.sendMessage(remoteJid, message, 'whatsapp', mediaUrl);
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error sending generic message:', error);
+        res.status(500).json({ error: 'Falha ao enviar mensagem', details: error.message });
+    }
+});
+
 // Send Status Notification
 router.post('/notify-status', async (req, res) => {
     try {

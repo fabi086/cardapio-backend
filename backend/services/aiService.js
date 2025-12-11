@@ -1100,42 +1100,79 @@ REGRAS IMPORTANTES:
         return responses;
     }
 
-    async sendMessage(remoteJid, text, channel = 'whatsapp', extraData = null) {
-        if (!this.settings) await this.loadSettings();
-
-        if (channel === 'web') {
-            return {
-                text,
-                role: 'assistant',
-                timestamp: new Date().toISOString(),
-                action: extraData // Pass the action data to frontend
-            };
-        }
+    async sendMessage(remoteJid, message, channel = 'whatsapp', mediaUrl = null) {
+        console.log(`Sending message to ${remoteJid}:`, message, mediaUrl ? `(with media: ${mediaUrl})` : '');
+        const fs = require('fs');
+        const path = require('path');
+        const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
 
         try {
-            const url = `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`;
-            const payload = {
-                number: remoteJid.replace('@s.whatsapp.net', ''),
-                text: text,
-                options: {
-                    delay: 1200,
-                    presence: 'composing',
-                    linkPreview: false
-                }
-            };
-            console.log(`[sendMessage] Sending to ${url} | Number: ${payload.number}`);
+            await this.loadSettings();
 
-            await axios.post(url, payload,
-                {
-                    headers: {
-                        'apikey': this.settings.evolution_api_key,
-                        'Content-Type': 'application/json'
-                    }
+            // Check if active
+            if (!this.settings || !this.settings.is_active) {
+                console.log('AI Service is inactive, skipping message send.');
+                return;
+            }
+
+            // Check API Key
+            if (this.settings.evolution_api_key) {
+                // Determine Payload Type (Text vs Media)
+                let url, payload;
+
+                if (mediaUrl) {
+                    // Media Message
+                    url = `${this.settings.evolution_api_url}/message/sendMedia/${this.settings.instance_name}`;
+                    payload = {
+                        number: remoteJid.replace('@s.whatsapp.net', ''),
+                        options: {
+                            delay: 1200,
+                            presence: 'composing'
+                        },
+                        mediaMessage: {
+                            mediatype: 'image',
+                            caption: message,
+                            media: mediaUrl
+                        }
+                    };
+                } else {
+                    // Text Message
+                    url = `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`;
+                    payload = {
+                        number: remoteJid.replace('@s.whatsapp.net', ''),
+                        options: {
+                            delay: 1200,
+                            presence: 'composing',
+                            linkPreview: true
+                        },
+                        textMessage: {
+                            text: message
+                        }
+                    };
                 }
-            );
+
+                console.log(`Posting to Evolution API: ${url}`, JSON.stringify(payload, null, 2));
+
+                const response = await axios.post(url, payload, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': this.settings.evolution_api_key
+                    }
+                });
+
+                console.log('Evolution API Response:', response.data);
+                this.logToDb('info', 'Message Sent', { remoteJid, success: true, media: !!mediaUrl });
+
+            } else {
+                console.warn('Evolution API Key not configured');
+                this.logToDb('warning', 'Evolution API Key missing');
+            }
+
         } catch (error) {
-            console.error('Error sending WhatsApp message:', error.response?.data || error.message);
-            this.logToDb('error', 'Error sending WhatsApp message', { error: error.response?.data || error.message });
+            console.error('Error sending message:', error.response?.data || error.message);
+            this.logToDb('error', 'Failed to send message', { error: error.message, remoteJid });
+            const fs = require('fs');
+            try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ERROR SENDING: ${error.message}\n`); } catch (e) { }
         }
     }
 

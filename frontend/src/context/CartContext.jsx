@@ -142,8 +142,8 @@ export const CartProvider = ({ children }) => {
                     discount: discountAmount,
                     coupon_code: appliedCoupon ? appliedCoupon.code : null,
                     status: 'Pendente',
-                    order_type: tableNumber ? 'dine_in' : 'delivery',
-                    table_number: tableNumber
+                    order_type: (customerData.table_number || tableNumber) ? 'dine_in' : 'delivery',
+                    table_number: customerData.table_number || tableNumber
                 }])
                 .select()
                 .single();
@@ -183,8 +183,8 @@ export const CartProvider = ({ children }) => {
                             order_number: orderNumber,
                             customer_name: customerData.name,
                             total: cartTotal + (customerData.deliveryFee || 0),
-                            delivery_type: tableNumber ? 'dine_in' : ((customerData.address || customerData.street || customerData.cep) ? 'delivery' : 'pickup'),
-                            table_number: tableNumber
+                            delivery_type: (customerData.table_number || tableNumber) ? 'dine_in' : ((customerData.address || customerData.street || customerData.cep) ? 'delivery' : 'pickup'),
+                            table_number: customerData.table_number || tableNumber
                         }
                     })
                 }).catch(err => console.error('Failed to trigger admin notification:', err));

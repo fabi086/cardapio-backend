@@ -211,7 +211,8 @@ _Pedido enviado via Cardápio Digital_`;
 
     // Monta endereço completo a partir dos campos estruturados
     const buildFullAddress = () => {
-        if (tableNumber) return `Mesa ${tableNumber}`;
+        const finalTable = tableNumber || (addressMode === 'table' ? formData.selectedTable : null);
+        if (finalTable) return `Mesa ${finalTable}`;
 
         if (addressMode === 'manual') {
             return formData.address;
@@ -235,6 +236,8 @@ _Pedido enviado via Cardápio Digital_`;
         try {
             // Monta endereço completo
             const fullAddress = buildFullAddress();
+            const isTableMode = tableNumber || addressMode === 'table';
+            const finalTableNumber = tableNumber || (addressMode === 'table' ? formData.selectedTable : null);
 
             // 1. Create or Update Customer
             let currentCustomerId = customerId;
@@ -243,13 +246,13 @@ _Pedido enviado via Cardápio Digital_`;
                 name: formData.name,
                 address: fullAddress, // Will be "Mesa X" if table mode
                 // Salvar campos estruturados também (only if not table)
-                cep: tableNumber ? null : (formData.cep || null),
-                street: tableNumber ? null : (formData.street || null),
-                number: tableNumber ? null : (formData.number || null),
-                complement: tableNumber ? null : (formData.complement || null),
-                neighborhood: tableNumber ? null : (formData.neighborhood || null),
-                city: tableNumber ? null : (formData.city || null),
-                state: tableNumber ? null : (formData.state || null),
+                cep: isTableMode ? null : (formData.cep || null),
+                street: isTableMode ? null : (formData.street || null),
+                number: isTableMode ? null : (formData.number || null),
+                complement: isTableMode ? null : (formData.complement || null),
+                neighborhood: isTableMode ? null : (formData.neighborhood || null),
+                city: isTableMode ? null : (formData.city || null),
+                state: isTableMode ? null : (formData.state || null),
                 updated_at: new Date()
             };
 
@@ -295,10 +298,10 @@ _Pedido enviado via Cardápio Digital_`;
             const order = await submitOrder({
                 ...formData,
                 address: fullAddress,
-                deliveryFee: tableNumber ? 0 : deliveryFee,
-                cep: tableNumber ? null : formData.cep,
+                deliveryFee: isTableMode ? 0 : deliveryFee,
+                cep: isTableMode ? null : formData.cep,
                 customer_id: currentCustomerId,
-                table_number: tableNumber || null, // Add table_number to order
+                table_number: finalTableNumber, // Add table_number to order
             });
 
 
@@ -333,7 +336,7 @@ _Pedido enviado via Cardápio Digital_`;
         }
     };
 
-    const finalTotal = cartTotal + (tableNumber ? 0 : (deliveryFee || 0));
+    const finalTotal = cartTotal + ((tableNumber || addressMode === 'table') ? 0 : (deliveryFee || 0));
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -345,10 +348,10 @@ _Pedido enviado via Cardápio Digital_`;
             <div className="relative w-full max-w-md bg-white dark:bg-stone-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                 <div className="p-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between bg-stone-50 dark:bg-stone-900/50">
                     <h2 className="text-xl font-display text-stone-800 dark:text-stone-100 flex items-center gap-2">
-                        {tableNumber ? (
+                        {(tableNumber || addressMode === 'table') ? (
                             <>
                                 <Utensils className="text-italian-red" size={24} />
-                                Pedido na Mesa {tableNumber}
+                                Pedido na Mesa {tableNumber || formData.selectedTable}
                             </>
                         ) : (
                             'Finalizar Pedido'
@@ -427,7 +430,7 @@ _Pedido enviado via Cardápio Digital_`;
                                         }`}
                                 >
                                     <MapPinned size={16} />
-                                    Buscar por CEP
+                                    Buscar CEP
                                 </button>
                                 <button
                                     type="button"
@@ -438,7 +441,21 @@ _Pedido enviado via Cardápio Digital_`;
                                         }`}
                                 >
                                     <Home size={16} />
-                                    Endereço Manual
+                                    Manual
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setAddressMode('table');
+                                        setDeliveryFee(0);
+                                    }}
+                                    className={`flex-1 py-2 px-3 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 ${addressMode === 'table'
+                                        ? 'bg-white dark:bg-stone-700 text-italian-red shadow-sm'
+                                        : 'text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'
+                                        }`}
+                                >
+                                    <Utensils size={16} />
+                                    No Local
                                 </button>
                             </div>
 
@@ -489,7 +506,7 @@ _Pedido enviado via Cardápio Digital_`;
                                         <div>
                                             <label className="text-xs font-bold text-stone-500 uppercase">Número *</label>
                                             <input
-                                                required
+                                                required={addressMode === 'cep'}
                                                 type="text"
                                                 placeholder="123"
                                                 className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-red outline-none transition-all"
@@ -552,6 +569,27 @@ _Pedido enviado via Cardápio Digital_`;
                                         value={formData.address}
                                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                                     />
+                                </div>
+                            )}
+
+                            {/* Modo Mesa (Manual) */}
+                            {addressMode === 'table' && (
+                                <div className="animate-in fade-in slide-in-from-top-2 p-4 bg-stone-50 dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700">
+                                    <label className="text-sm font-bold text-stone-600 dark:text-stone-400 block mb-2">Selecione sua Mesa</label>
+                                    <select
+                                        required
+                                        className="w-full p-3 rounded-xl border border-stone-200 dark:border-stone-600 bg-white dark:bg-stone-900 focus:ring-2 focus:ring-italian-red outline-none transition-all font-bold text-lg"
+                                        onChange={(e) => setFormData({ ...formData, selectedTable: e.target.value })}
+                                        defaultValue=""
+                                    >
+                                        <option value="" disabled>Escolha o número...</option>
+                                        {Array.from({ length: 20 }, (_, i) => i + 1).map(num => (
+                                            <option key={num} value={num}>Mesa {num}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-stone-500 mt-2">
+                                        *Verifique o número na plaquinha sobre a mesa.
+                                    </p>
                                 </div>
                             )}
                         </div>

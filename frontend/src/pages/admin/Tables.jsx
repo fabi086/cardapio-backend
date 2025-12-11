@@ -1,11 +1,42 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Printer, RefreshCw } from 'lucide-react';
+import { Printer, RefreshCw, Trash2, Plus, Settings } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 const Tables = () => {
     const [tableCount, setTableCount] = useState(20);
+    const [activeTables, setActiveTables] = useState([]);
     const [baseUrl, setBaseUrl] = useState(window.location.origin);
+    const [settings, setSettings] = useState(null);
+    const [loading, setLoading] = useState(true);
     const printRef = useRef();
+
+    useEffect(() => {
+        // Initialize tables list
+        setActiveTables(Array.from({ length: tableCount }, (_, i) => i + 1));
+        fetchSettings();
+    }, []);
+
+    const fetchSettings = async () => {
+        try {
+            const { data } = await supabase.from('business_settings').select('logo_url, restaurant_name, primary_color, secondary_color').single();
+            if (data) setSettings(data);
+        } catch (error) {
+            console.error('Error fetching settings:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdateTableCount = (newCount) => {
+        setTableCount(newCount);
+        // Reset list when count changes directly
+        setActiveTables(Array.from({ length: newCount }, (_, i) => i + 1));
+    };
+
+    const removeTable = (tableNum) => {
+        setActiveTables(prev => prev.filter(t => t !== tableNum));
+    };
 
     const handlePrint = () => {
         const printContent = printRef.current;
@@ -17,18 +48,39 @@ const Tables = () => {
         printWindow.document.write(`
             <html>
                 <head>
-                    <title>Imprimir QR Codes</title>
+                    <title>Imprimir QR Codes - ${settings?.restaurant_name || 'Cardápio Digital'}</title>
                     <style>
-                        body { font-family: sans-serif; padding: 20px; }
+                        body { font-family: 'Inter', sans-serif; padding: 20px; }
                         .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-                        .card { border: 2px solid #000; padding: 20px; text-align: center; page-break-inside: avoid; border-radius: 10px; }
-                        .title { font-size: 24px; font-weight: bold; margin-bottom: 10px; display: block; }
-                        .scan { font-size: 14px; margin-top: 5px; display: block; }
+                        .card { 
+                            border: 2px solid #e7e5e4; 
+                            padding: 24px; 
+                            text-align: center; 
+                            page-break-inside: avoid; 
+                            border-radius: 16px; 
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            background: white;
+                        }
+                        .logo { height: 40px; margin-bottom: 10px; object-fit: contain; }
+                        .title { font-size: 20px; font-weight: 900; margin-bottom: 15px; color: ${settings?.primary_color || '#EA1D2C'}; text-transform: uppercase; }
+                        .scan-text { font-size: 14px; font-weight: bold; margin-top: 15px; color: #57534e; text-transform: uppercase; letter-spacing: 1px; }
                     </style>
                 </head>
                 <body>
                     <div class="grid">
-                        ${printContent.innerHTML}
+                        ${activeTables.map(num => `
+                            <div class="card">
+                                ${settings?.logo_url ? `<img src="${settings.logo_url}" class="logo" />` : ''}
+                                <span class="title">MESA ${num}</span>
+                                <div style="padding: 10px; background: white; border-radius: 8px;">
+                                    ${document.getElementById(`qr-code-${num}`)?.outerHTML || ''}
+                                </div>
+                                <span class="scan-text">Escaneie para pedir</span>
+                            </div>
+                        `).join('')}
                     </div>
                 </body>
             </html>
@@ -38,59 +90,130 @@ const Tables = () => {
         setTimeout(() => {
             printWindow.print();
             printWindow.close();
-        }, 500);
+        }, 800);
     };
 
-    const tables = Array.from({ length: tableCount }, (_, i) => i + 1);
-
     return (
-        <div className="p-8">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-display text-stone-800 dark:text-stone-100">Mesas e QR Codes</h1>
-                <div className="flex gap-4 items-center">
-                    <div className="flex items-center gap-2 bg-white dark:bg-stone-900 p-2 rounded-lg border border-stone-200 dark:border-stone-800">
-                        <span className="text-sm font-bold text-stone-500">Qtd. Mesas:</span>
+        <div className="p-4 md:p-8 max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h1 className="text-3xl font-display text-stone-800 dark:text-stone-100">Mesas e QR Codes</h1>
+                    <p className="text-stone-500 dark:text-stone-400 mt-1">Gere, personalize e imprima os QR Codes para suas mesas.</p>
+                </div>
+                <div className="flex flex-wrap gap-4 items-center">
+                    <div className="flex items-center gap-2 bg-white dark:bg-stone-900 p-2 rounded-lg border border-stone-200 dark:border-stone-800 shadow-sm">
+                        <span className="text-sm font-bold text-stone-500 pl-2">Gerar até mesa:</span>
                         <input
                             type="number"
                             value={tableCount}
-                            onChange={(e) => setTableCount(Number(e.target.value))}
-                            className="w-16 p-1 bg-transparent font-bold text-center outline-none"
+                            onChange={(e) => handleUpdateTableCount(Number(e.target.value))}
+                            className="w-16 p-1 bg-transparent font-bold text-center outline-none border-b-2 border-transparent focus:border-italian-red transition-colors dark:text-white"
                         />
                     </div>
-                    <button
-                        onClick={handlePrint}
-                        className="bg-italian-green hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors"
-                    >
-                        <Printer size={20} />
-                        Imprimir Tudo
-                    </button>
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 p-8">
-                <div ref={printRef} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                    {tables.map(num => (
-                        <div key={num} className="border-2 border-stone-200 dark:border-stone-700 rounded-xl p-6 flex flex-col items-center bg-white dark:bg-stone-800 aspect-square justify-center">
-                            <span className="text-2xl font-black text-italian-red mb-4">MESA {num}</span>
-                            <div className="bg-white p-2 rounded-lg shadow-sm">
-                                <QRCodeSVG
-                                    value={`${baseUrl}/?table=${num}`}
-                                    size={120}
-                                    level="H"
-                                    includeMargin={true}
-                                />
-                            </div>
-                            <span className="text-xs font-bold text-stone-400 mt-4 uppercase tracking-wider">Escaneie para pedir</span>
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Preview e Controles */}
+                <div className="lg:col-span-3">
+                    <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 p-6 md:p-8">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="font-bold text-lg text-stone-700 dark:text-stone-200 flex items-center gap-2">
+                                <Printer size={20} /> Preview de Impressão ({activeTables.length})
+                            </h2>
+                            <button
+                                onClick={handlePrint}
+                                className="bg-italian-green hover:bg-green-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                            >
+                                <Printer size={20} />
+                                Imprimir Tudo
+                            </button>
                         </div>
-                    ))}
-                </div>
-            </div>
 
-            <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 rounded-xl flex items-center gap-4">
-                <RefreshCw className="shrink-0" />
-                <div>
-                    <p className="font-bold">Como funciona?</p>
-                    <p className="text-sm">Imprima os QR Codes, recorte e cole nas mesas. Quando o cliente escanear, o cardápio abrirá já identificado com o número da mesa, sem pedir endereço de entrega!</p>
+                        <div ref={printRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                            {activeTables.map(num => (
+                                <div key={num} className="group relative border-2 border-stone-100 dark:border-stone-700 rounded-2xl p-6 flex flex-col items-center bg-white dark:bg-stone-800 aspect-[3/4] justify-between transition-all hover:border-italian-red/30 hover:shadow-lg">
+                                    <button
+                                        onClick={() => removeTable(num)}
+                                        className="absolute top-2 right-2 p-2 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all bg-white dark:bg-stone-800 rounded-full shadow-sm"
+                                        title="Remover mesa da impressão"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+
+                                    {settings?.logo_url && (
+                                        <img src={settings.logo_url} alt="Logo" className="h-8 object-contain mb-2 opacity-80" />
+                                    )}
+
+                                    <span className="text-xl font-black mb-2 uppercase tracking-wide" style={{ color: settings?.primary_color || '#EA1D2C' }}>
+                                        Mesa {num}
+                                    </span>
+
+                                    <div className="bg-white p-3 rounded-xl shadow-sm border border-stone-100">
+                                        <QRCodeSVG
+                                            id={`qr-code-${num}`}
+                                            value={`${baseUrl}/?table=${num}`}
+                                            size={140}
+                                            level="H"
+                                            includeMargin={true}
+                                            imageSettings={settings?.logo_url ? {
+                                                src: settings.logo_url,
+                                                x: undefined,
+                                                y: undefined,
+                                                height: 24,
+                                                width: 24,
+                                                excavate: true,
+                                            } : undefined}
+                                        />
+                                    </div>
+
+                                    <span className="text-xs font-bold text-stone-400 mt-4 uppercase tracking-widest text-center">
+                                        Escaneie para pedir
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {activeTables.length === 0 && (
+                            <div className="text-center py-20 text-stone-400">
+                                <p>Nenhuma mesa para imprimir.</p>
+                                <button onClick={() => setActiveTables(Array.from({ length: tableCount }, (_, i) => i + 1))} className="text-italian-red font-bold mt-2 hover:underline">Restaurar Lista</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Sidebar Info - (Optional customization controls could go here later) */}
+                <div className="space-y-6">
+                    <div className="p-6 bg-blue-50 dark:bg-blue-900/10 text-blue-800 dark:text-blue-200 rounded-xl border border-blue-100 dark:border-blue-800/30">
+                        <RefreshCw className="mb-4 text-blue-600 dark:text-blue-400" size={32} />
+                        <h3 className="font-bold text-lg mb-2">Personalização Automática</h3>
+                        <p className="text-sm opacity-90 leading-relaxed">
+                            O design dos QR Codes utiliza automaticamente o <strong>Logo</strong> e a <strong>Cor Primária</strong> definidos nas Configurações da sua loja.
+                        </p>
+                        <a href="/admin/settings" className="inline-flex items-center gap-2 text-xs font-bold bg-blue-100 dark:bg-blue-800/30 px-3 py-2 rounded-lg mt-4 hover:bg-blue-200 transition-colors">
+                            <Settings size={14} />
+                            Acessar Configurações
+                        </a>
+                    </div>
+
+                    <div className="p-6 bg-stone-50 dark:bg-stone-900/30 rounded-xl border border-stone-200 dark:border-stone-800">
+                        <h3 className="font-bold text-stone-700 dark:text-stone-300 mb-4">Dicas de Uso</h3>
+                        <ul className="space-y-3 text-sm text-stone-500 dark:text-stone-400">
+                            <li className="flex gap-2">
+                                <span className="font-bold text-italian-red">•</span>
+                                Imprima em papel adesivo ou cartolina de alta gramatura.
+                            </li>
+                            <li className="flex gap-2">
+                                <span className="font-bold text-italian-red">•</span>
+                                Plastifique para maior durabilidade nas mesas.
+                            </li>
+                            <li className="flex gap-2">
+                                <span className="font-bold text-italian-red">•</span>
+                                Teste um QR Code antes de imprimir todos.
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
