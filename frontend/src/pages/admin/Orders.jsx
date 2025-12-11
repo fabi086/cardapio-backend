@@ -330,15 +330,39 @@ const Orders = () => {
         return colors[status] || 'bg-stone-100 text-stone-800 dark:bg-stone-800 dark:text-stone-200';
     };
 
+    const [typeFilter, setTypeFilter] = useState('all'); // all, dine_in, delivery, pickup
+
+    // ... (rest of code)
+
     // Filter orders
     const filteredOrders = orders.filter(order => {
-        if (statusFilter === 'all') return true;
-        return order.status === statusFilter;
+        // Status Filter
+        if (statusFilter !== 'all' && order.status !== statusFilter) return false;
+
+        // Type Filter
+        if (typeFilter === 'dine_in') {
+            return order.table_number || order.order_type === 'dine_in';
+        }
+        if (typeFilter === 'delivery') {
+            return !order.table_number && (order.order_type === 'delivery' || (!order.order_type && order.customer_address)); // Fallback
+        }
+        if (typeFilter === 'pickup') {
+            return !order.table_number && (order.order_type === 'pickup' || (!order.order_type && !order.customer_address)); // Fallback
+        }
+
+        return true;
     });
 
     const filteredProducts = products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const typeTabs = [
+        { id: 'all', label: 'Todos', icon: List },
+        { id: 'dine_in', label: 'Mesas', icon: ChefHat }, // or Utensils
+        { id: 'delivery', label: 'Entrega', icon: Truck },
+        { id: 'pickup', label: 'Retirada', icon: CheckCircle }, // or ShoppingBag
+    ];
 
     const tabs = [
         { id: 'all', label: 'Todos' },
@@ -351,28 +375,18 @@ const Orders = () => {
         { id: 'cancelled', label: 'Cancelados' },
     ];
 
-    const FilterButton = ({ id, label }) => (
-        <button
-            onClick={() => setDateRange(id)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${dateRange === id
-                ? 'bg-italian-red text-white shadow-md'
-                : 'bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-700'
-                }`}
-        >
-            {label}
-        </button>
-    );
-
-    if (loading) return <div className="p-8">Carregando pedidos...</div>;
+    // ...
 
     return (
         <div className="p-8">
             <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-4">
+                {/* ... (Header content unchanged) ... */}
                 <h1 className="text-3xl font-display text-stone-800 dark:text-stone-100">Pedidos</h1>
 
                 <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
-                    {/* Date Filters */}
+                    {/* Date Filters (Unchanged) */}
                     <div className="flex flex-col sm:flex-row items-center gap-3 bg-stone-100 dark:bg-stone-900/50 p-1.5 rounded-xl w-full sm:w-auto">
+                        {/* ... */}
                         <span className="text-xs font-bold text-stone-500 uppercase px-2 hidden sm:block">Filtre por data:</span>
                         <div className="flex gap-1 overflow-x-auto max-w-full pb-1 sm:pb-0 no-scrollbar">
                             <FilterButton id="today" label="Hoje" />
@@ -384,37 +398,33 @@ const Orders = () => {
 
                         {dateRange === 'custom' && (
                             <div className="flex items-center gap-2 bg-white dark:bg-stone-800 px-2 py-1 rounded-lg border border-stone-200 dark:border-stone-700 shadow-sm animate-fadeIn">
-                                <input
-                                    type="date"
-                                    value={customDate}
-                                    onChange={(e) => setCustomDate(e.target.value)}
-                                    className="bg-transparent outline-none text-stone-700 dark:text-stone-200 text-xs font-medium"
-                                />
+                                <input type="date" value={customDate} onChange={(e) => setCustomDate(e.target.value)} className="bg-transparent outline-none text-stone-700 dark:text-stone-200 text-xs font-medium" />
                             </div>
                         )}
-                    </div>
-
-                    {/* View Toggle */}
-                    <div className="flex bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 p-1 shrink-0">
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`p-2 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-stone-100 dark:bg-stone-800 text-italian-green shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
-                            title="Visualização em Grade"
-                        >
-                            <Grid size={20} />
-                        </button>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`p-2 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-stone-100 dark:bg-stone-800 text-italian-green shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
-                            title="Visualização em Lista"
-                        >
-                            <List size={20} />
-                        </button>
                     </div>
                 </div>
             </div>
 
-            {/* Tab Filters */}
+            {/* Main Tabs (Type) */}
+            <div className="flex gap-2 mb-6 border-b border-stone-200 dark:border-stone-800 pb-1">
+                {typeTabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setTypeFilter(tab.id)}
+                        className={`
+                            flex items-center gap-2 px-4 py-3 border-b-2 font-bold text-sm transition-all
+                            ${typeFilter === tab.id
+                                ? 'border-italian-red text-italian-red'
+                                : 'border-transparent text-stone-500 hover:text-stone-700 hover:border-stone-300'}
+                        `}
+                    >
+                        <tab.icon size={18} />
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Status Filters */}
             <div className="flex overflow-x-auto pb-4 mb-4 gap-2 no-scrollbar">
                 {tabs.map((tab) => (
                     <button

@@ -42,18 +42,33 @@ const Tables = () => {
         setActiveTables(prev => prev.filter(t => t !== tableNum));
     };
 
-    const handlePrint = () => {
+    const handlePrint = (singleTableNum = null) => {
+        const tablesToPrint = singleTableNum ? [singleTableNum] : activeTables;
+
         const printContent = printRef.current;
         const windowUrl = 'about:blank';
         const uniqueName = new Date();
         const windowName = 'Print' + uniqueName.getTime();
         const printWindow = window.open(windowUrl, windowName, 'left=50000,top=50000,width=0,height=0');
 
+        // Resolve absolute Logo URL for printing
+        let logoSrc = '';
+        if (settings?.logo_url) {
+            if (settings.logo_url.startsWith('http')) {
+                logoSrc = settings.logo_url;
+            } else {
+                logoSrc = `${window.location.origin}${settings.logo_url}`;
+            }
+        }
+
         printWindow.document.write(`
             <html>
                 <head>
                     <title>Imprimir QR Codes - ${settings?.restaurant_name || 'Cardápio Digital'}</title>
                     <style>
+                        @media print {
+                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        }
                         body { font-family: 'Inter', sans-serif; padding: 20px; }
                         .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
                         .card { 
@@ -75,9 +90,9 @@ const Tables = () => {
                 </head>
                 <body>
                     <div class="grid">
-                        ${activeTables.map(num => `
+                        ${tablesToPrint.map(num => `
                             <div class="card">
-                                ${settings?.logo_url ? `<img src="${settings.logo_url}" class="logo" />` : ''}
+                                ${logoSrc ? `<img src="${logoSrc}" class="logo" />` : ''}
                                 <span class="title">MESA ${num}</span>
                                 <div style="padding: 10px; background: white; border-radius: 8px;">
                                     ${document.getElementById(`qr-code-${num}`)?.outerHTML || ''}
@@ -86,15 +101,20 @@ const Tables = () => {
                             </div>
                         `).join('')}
                     </div>
+                    <script>
+                        // Wait for images to load before printing
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.print();
+                                window.close();
+                            }, 500);
+                        };
+                    </script>
                 </body>
             </html>
         `);
         printWindow.document.close();
         printWindow.focus();
-        setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-        }, 800);
     };
 
     return (
@@ -133,7 +153,7 @@ const Tables = () => {
                                 <Printer size={20} /> Preview de Impressão ({activeTables.length})
                             </h2>
                             <button
-                                onClick={handlePrint}
+                                onClick={() => handlePrint()}
                                 className="bg-italian-green hover:bg-green-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                             >
                                 <Printer size={20} />
@@ -144,13 +164,22 @@ const Tables = () => {
                         <div ref={printRef} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
                             {activeTables.map(num => (
                                 <div key={num} className="group relative border-2 border-stone-100 dark:border-stone-700 rounded-2xl p-6 flex flex-col items-center bg-white dark:bg-stone-800 aspect-[3/4] justify-between transition-all hover:border-italian-red/30 hover:shadow-lg">
-                                    <button
-                                        onClick={() => removeTable(num)}
-                                        className="absolute top-2 right-2 p-2 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all bg-white dark:bg-stone-800 rounded-full shadow-sm"
-                                        title="Remover mesa da impressão"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                        <button
+                                            onClick={() => handlePrint(num)}
+                                            className="p-2 text-stone-500 hover:text-blue-600 bg-white dark:bg-stone-800 rounded-full shadow-sm hover:shadow-md transition-all"
+                                            title="Imprimir só esta mesa"
+                                        >
+                                            <Printer size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => removeTable(num)}
+                                            className="p-2 text-stone-300 hover:text-red-500 bg-white dark:bg-stone-800 rounded-full shadow-sm hover:shadow-md transition-all"
+                                            title="Remover mesa da lista"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
 
                                     {settings?.logo_url && (
                                         <img src={settings.logo_url} alt="Logo" className="h-8 object-contain mb-2 opacity-80" />
