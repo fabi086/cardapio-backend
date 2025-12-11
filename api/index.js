@@ -4,10 +4,19 @@ try {
 } catch (error) {
     console.error('FAILED TO LOAD BACKEND:', error);
     module.exports = (req, res) => {
-        res.status(500).send(`
-            <h1>Critical Error Loading Backend</h1>
-            <pre>${error.stack || error.message}</pre>
-            <p>Check Vercel logs for more details.</p>
-        `);
+        // Enable CORS for the error response
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+        if (req.method === 'OPTIONS') {
+            return res.status(200).end();
+        }
+
+        res.status(500).json({
+            error: 'Critical Error Loading Backend',
+            details: error.message,
+            stack: error.stack
+        });
     };
 }

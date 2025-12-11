@@ -115,7 +115,7 @@ const Orders = () => {
             // Notify AI Agent
             const order = orders.find(o => o.id === orderId);
             if (order && order.customer_phone) {
-                const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3002' : 'https://cardapio-backend-jzit.vercel.app');
+                const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3002' : window.location.origin);
                 // Don't await this, let it run in background
                 fetch(`${API_URL}/api/ai/notify-status`, {
                     method: 'POST',
@@ -127,11 +127,23 @@ const Orders = () => {
                     })
                 })
                     .then(async (res) => {
+                        if (!res.ok) {
+                            const text = await res.text();
+                            console.error('Erro servidor notificação:', res.status, text);
+                            try {
+                                const json = JSON.parse(text);
+                                throw new Error(json.details || json.error || 'Erro no servidor API');
+                            } catch (e) {
+                                throw new Error(`Erro API (${res.status}): ${text.slice(0, 50)}`);
+                            }
+                        }
                         const data = await res.json();
                         if (!data.success) console.error('Falha notificação:', data);
-                        // Optional: alert('Notificação enviada ao cliente!'); 
                     })
-                    .catch(err => alert('Erro ao notificar cliente: ' + err.message));
+                    .catch(err => {
+                        console.error('Erro detalhado notificação:', err);
+                        alert('Erro ao notificar cliente: ' + err.message);
+                    });
             }
 
         } catch (error) {
