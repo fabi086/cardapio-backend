@@ -4,16 +4,15 @@ import { Printer, RefreshCw, Trash2, Plus, Settings } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 const Tables = () => {
-    const [tableCount, setTableCount] = useState(20);
-    const [activeTables, setActiveTables] = useState([]);
+    // Start with empty list or load from localStorage if desired (optional)
+    const [activeTables, setActiveTables] = useState([1, 2, 3, 4, 5]);
+    const [newTableNum, setNewTableNum] = useState('');
     const [baseUrl, setBaseUrl] = useState(window.location.origin);
     const [settings, setSettings] = useState(null);
     const [loading, setLoading] = useState(true);
     const printRef = useRef();
 
     useEffect(() => {
-        // Initialize tables list
-        setActiveTables(Array.from({ length: tableCount }, (_, i) => i + 1));
         fetchSettings();
     }, []);
 
@@ -28,10 +27,15 @@ const Tables = () => {
         }
     };
 
-    const handleUpdateTableCount = (newCount) => {
-        setTableCount(newCount);
-        // Reset list when count changes directly
-        setActiveTables(Array.from({ length: newCount }, (_, i) => i + 1));
+    const addTable = (e) => {
+        e.preventDefault();
+        const num = Number(newTableNum);
+        if (!num || num < 1) return alert('Número inválido');
+        if (activeTables.includes(num)) return alert('Mesa já está na lista');
+
+        const newList = [...activeTables, num].sort((a, b) => a - b);
+        setActiveTables(newList);
+        setNewTableNum('');
     };
 
     const removeTable = (tableNum) => {
@@ -98,19 +102,26 @@ const Tables = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
                     <h1 className="text-3xl font-display text-stone-800 dark:text-stone-100">Mesas e QR Codes</h1>
-                    <p className="text-stone-500 dark:text-stone-400 mt-1">Gere, personalize e imprima os QR Codes para suas mesas.</p>
+                    <p className="text-stone-500 dark:text-stone-400 mt-1">Gerencie os QR Codes. Adicione as mesas que deseja imprimir.</p>
                 </div>
-                <div className="flex flex-wrap gap-4 items-center">
-                    <div className="flex items-center gap-2 bg-white dark:bg-stone-900 p-2 rounded-lg border border-stone-200 dark:border-stone-800 shadow-sm">
-                        <span className="text-sm font-bold text-stone-500 pl-2">Gerar até mesa:</span>
-                        <input
-                            type="number"
-                            value={tableCount}
-                            onChange={(e) => handleUpdateTableCount(Number(e.target.value))}
-                            className="w-16 p-1 bg-transparent font-bold text-center outline-none border-b-2 border-transparent focus:border-italian-red transition-colors dark:text-white"
-                        />
-                    </div>
-                </div>
+
+                <form onSubmit={addTable} className="flex gap-2 items-center bg-white dark:bg-stone-900 p-2 rounded-lg border border-stone-200 dark:border-stone-800 shadow-sm">
+                    <span className="text-sm font-bold text-stone-500 pl-2">Adicionar Mesa:</span>
+                    <input
+                        type="number"
+                        placeholder="Nº"
+                        value={newTableNum}
+                        onChange={(e) => setNewTableNum(e.target.value)}
+                        className="w-16 p-1 bg-transparent font-bold text-center outline-none border-b-2 border-transparent focus:border-italian-red transition-colors dark:text-white"
+                    />
+                    <button
+                        type="submit"
+                        className="bg-stone-800 hover:bg-stone-700 text-white p-2 rounded-lg transition-colors"
+                        title="Adicionar"
+                    >
+                        <Plus size={18} />
+                    </button>
+                </form>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -177,7 +188,7 @@ const Tables = () => {
                         {activeTables.length === 0 && (
                             <div className="text-center py-20 text-stone-400">
                                 <p>Nenhuma mesa para imprimir.</p>
-                                <button onClick={() => setActiveTables(Array.from({ length: tableCount }, (_, i) => i + 1))} className="text-italian-red font-bold mt-2 hover:underline">Restaurar Lista</button>
+                                <button onClick={() => setActiveTables([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])} className="text-italian-red font-bold mt-2 hover:underline">Restaurar Mesas Padrão (1-10)</button>
                             </div>
                         )}
                     </div>
