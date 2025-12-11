@@ -389,11 +389,24 @@ const Orders = () => {
                         {/* ... */}
                         <span className="text-xs font-bold text-stone-500 uppercase px-2 hidden sm:block">Filtre por data:</span>
                         <div className="flex gap-1 overflow-x-auto max-w-full pb-1 sm:pb-0 no-scrollbar">
-                            <FilterButton id="today" label="Hoje" />
-                            <FilterButton id="7d" label="7 Dias" />
-                            <FilterButton id="15d" label="15 Dias" />
-                            <FilterButton id="30d" label="30 Dias" />
-                            <FilterButton id="custom" label="Personalizado" />
+                            {[
+                                { id: 'today', label: 'Hoje' },
+                                { id: '7d', label: '7 Dias' },
+                                { id: '15d', label: '15 Dias' },
+                                { id: '30d', label: '30 Dias' },
+                                { id: 'custom', label: 'Personalizado' }
+                            ].map(filter => (
+                                <button
+                                    key={filter.id}
+                                    onClick={() => setDateRange(filter.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${dateRange === filter.id
+                                            ? 'bg-white dark:bg-stone-800 shadow-sm text-stone-800 dark:text-stone-200 ring-1 ring-black/5 dark:ring-white/10'
+                                            : 'text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200/50 dark:hover:bg-stone-800'
+                                        }`}
+                                >
+                                    {filter.label}
+                                </button>
+                            ))}
                         </div>
 
                         {dateRange === 'custom' && (
