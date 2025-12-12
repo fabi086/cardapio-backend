@@ -142,7 +142,7 @@ const Orders = () => {
                     })
                     .catch(err => {
                         console.error('Erro detalhado notificação:', err);
-                        alert('Erro ao notificar cliente: ' + err.message);
+                        alert(`⚠️ Alerta: Status atualizado, mas falha ao notificar cliente via WhatsApp.\n\nMotivo: ${err.message}`);
                     });
             }
 
@@ -455,267 +455,342 @@ const Orders = () => {
                 ))}
             </div>
 
-            <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-4'}>
-                {filteredOrders.map((order) => (
-                    <div key={order.id} className={`bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-hidden flex flex-col ${viewMode === 'list' ? 'md:flex-row' : ''}`}>
-
-                        {/* Header / Main Info */}
-                        <div className={`p-3 ${viewMode === 'list' ? 'flex-1 flex items-center gap-6' : 'border-b border-stone-100 dark:border-stone-800'}`}>
-                            <div className="flex justify-between items-start w-full">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="font-bold text-lg text-stone-800 dark:text-stone-200">
-                                            #{order.order_number ? order.order_number : order.id.slice(0, 8)}
-                                        </span>
-                                        <span className="text-xs text-stone-500 bg-stone-100 dark:bg-stone-800 px-2 py-0.5 rounded-full">{new Date(order.created_at).toLocaleTimeString().slice(0, 5)}</span>
-                                    </div>
-                                    <div className="font-medium text-stone-700 dark:text-stone-300 truncate max-w-[200px] text-sm">{order.customer_name}</div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="font-bold text-italian-green text-lg">R$ {order.total.toFixed(2)}</div>
-                                    <div className="text-xs font-bold text-stone-500 uppercase">{getPaymentMethodLabel(order.payment_method)}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Detailed Content (Always visible in Grid now) */}
-                        <div className={`p-3 bg-stone-50 dark:bg-stone-800/30 flex-1 overflow-y-auto text-sm ${viewMode === 'grid' ? 'max-h-[200px]' : 'hidden md:block md:w-1/3 md:border-l md:border-stone-200 dark:md:border-stone-800'}`}>
-
-                            {/* Address or Table */}
-                            <div className="mb-3 pb-2 border-b border-stone-200 dark:border-stone-700">
-                                <p className="text-stone-500 text-xs font-bold uppercase mb-0.5">
-                                    {order.table_number ? 'Local' : 'Endereço'}
-                                </p>
-                                <p className={`leading-tight ${order.table_number ? 'text-xl font-bold text-italian-red' : 'text-stone-700 dark:text-stone-300'}`}>
-                                    {order.table_number ? `MESA ${order.table_number}` : order.customer_address}
-                                </p>
-                            </div>
-
-                            {/* Items */}
-                            <div className="mb-3 pb-2 border-b border-stone-200 dark:border-stone-700">
-                                <p className="text-stone-500 text-xs font-bold uppercase mb-1">Itens</p>
-                                <div className="space-y-1">
-                                    {order.order_items.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between">
-                                            <span className="text-stone-600 dark:text-stone-400"><span className="font-bold text-stone-800 dark:text-stone-200">{item.quantity}x</span> {item.product_name}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Fees & Payment Details */}
-                            <div className="flex justify-between items-end text-xs">
-                                <div>
-                                    {!order.table_number && order.delivery_fee > 0 && (
-                                        <p className="text-stone-500">Taxa: R$ {Number(order.delivery_fee).toFixed(2)}</p>
-                                    )}
-                                    {order.change_for && (
-                                        <p className="text-stone-500">Troco para: {order.change_for}</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Actions Footer */}
-                        <div className={`p-2 bg-white dark:bg-stone-900 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between gap-2 ${viewMode === 'list' ? 'md:w-auto md:border-t-0 md:border-l' : ''}`}>
-                            <select
-                                value={order.status}
-                                onChange={(e) => updateStatus(order.id, e.target.value)}
-                                className={`text-xs font-bold uppercase py-1.5 px-2 rounded border-none outline-none cursor-pointer flex-1 ${getStatusColor(order.status)}`}
-                            >
-                                <option value="pending">Pendente</option>
-                                <option value="approved">Aprovado</option>
-                                <option value="preparing">Preparando</option>
-                                <option value="ready">Pronto para Entrega</option>
-                                <option value="out_for_delivery">Saiu para Entrega</option>
-                                <option value="delivered">Entregue</option>
-                                <option value="cancelled">Cancelado</option>
-                            </select>
-
-                            <div className="flex gap-1">
-                                <button
-                                    onClick={() => handlePrint(order)}
-                                    className="p-2 text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition-colors"
-                                    title="Imprimir"
-                                >
-                                    <Printer size={16} />
-                                </button>
-                                <button
-                                    onClick={() => setEditingOrder({ ...order, delivery_fee: order.delivery_fee || 0 })}
-                                    className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                                    title="Editar"
-                                >
-                                    <Pencil size={16} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Compact Edit Modal */}
-            {editingOrder && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-stone-900 rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden border border-stone-200 dark:border-stone-700 flex flex-col max-h-[90vh]">
-
-                        {/* Header */}
-                        <div className="px-6 py-4 border-b border-stone-200 dark:border-stone-800 flex justify-between items-center bg-white dark:bg-stone-900 shrink-0">
-                            <div>
-                                <h3 className="font-bold text-xl text-stone-800 dark:text-stone-100">Editar Pedido #{editingOrder.order_number || editingOrder.id.slice(0, 8)}</h3>
-                                <p className="text-xs text-stone-500">Faça alterações nos itens e valores do pedido.</p>
-                            </div>
-                            <button onClick={() => setEditingOrder(null)} className="text-stone-400 hover:text-red-500 transition-colors">
-                                <XCircle size={24} />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleUpdateOrder} className="flex-1 overflow-hidden flex flex-col md:flex-row">
-
-                            {/* Left Column: Items (Scrollable) */}
-                            <div className="flex-1 overflow-y-auto p-6 border-r border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/50">
-                                <div className="space-y-4">
-                                    {/* Product Search */}
-                                    <div className="relative">
-                                        <div className="flex items-center bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-600 rounded-lg px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-italian-red focus-within:border-transparent transition-all">
-                                            <Search size={18} className="text-stone-400 mr-2" />
-                                            <input
-                                                type="text"
-                                                placeholder="Buscar produto para adicionar..."
-                                                value={searchTerm}
-                                                onChange={(e) => {
-                                                    setSearchTerm(e.target.value);
-                                                    setShowProductList(true);
-                                                }}
-                                                onFocus={() => setShowProductList(true)}
-                                                className="flex-1 bg-transparent outline-none text-sm text-stone-800 dark:text-stone-200 placeholder-stone-400"
-                                            />
-                                        </div>
-
-                                        {showProductList && searchTerm && (
-                                            <div className="absolute z-20 w-full mt-1 bg-white dark:bg-stone-800 rounded-lg shadow-xl border border-stone-200 dark:border-stone-700 max-h-48 overflow-y-auto">
-                                                {filteredProducts.length > 0 ? (
-                                                    filteredProducts.map(product => (
-                                                        <div
-                                                            key={product.id}
-                                                            onClick={() => handleAddItem(product)}
-                                                            className="px-4 py-2 hover:bg-stone-100 dark:hover:bg-stone-700 cursor-pointer flex justify-between items-center border-b border-stone-100 dark:border-stone-700 last:border-0 transition-colors text-sm"
-                                                        >
-                                                            <span className="font-medium text-stone-800 dark:text-stone-200">{product.name}</span>
-                                                            <span className="text-italian-green font-bold">R$ {product.price.toFixed(2)}</span>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="p-3 text-stone-500 text-center text-sm">Nenhum produto encontrado</div>
-                                                )}
+            {/* Content Area */}
+            <div className="pb-4">
+                {viewMode === 'list' ? (
+                    <div className="overflow-x-auto bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800">
+                        <table className="w-full text-left border-collapse min-w-[900px]">
+                            <thead className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 dark:text-stone-400 font-bold text-xs uppercase tracking-wider">
+                                <tr>
+                                    <th className="px-6 py-4">Pedido</th>
+                                    <th className="px-6 py-4">Cliente / Mesa</th>
+                                    <th className="px-6 py-4">Status & Pagamento</th>
+                                    <th className="px-6 py-4 text-center">Itens</th>
+                                    <th className="px-6 py-4 text-right">Total</th>
+                                    <th className="px-6 py-4 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                                {loading && (
+                                    <tr><td colSpan="6" className="p-8 text-center text-stone-400">Carregando pedidos...</td></tr>
+                                )}
+                                {!loading && filteredOrders.length === 0 && (
+                                    <tr><td colSpan="6" className="p-8 text-center text-stone-400">Nenhum pedido encontrado.</td></tr>
+                                )}
+                                {filteredOrders.map(order => (
+                                    <tr key={order.id} className="hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-lg text-stone-800 dark:text-stone-200">#{order.order_number || order.id.slice(0, 8)}</div>
+                                            <div className="text-xs text-stone-500 flex items-center gap-1">
+                                                <Clock size={12} />
+                                                {new Date(order.created_at).toLocaleTimeString().slice(0, 5)}
                                             </div>
-                                        )}
-                                        {showProductList && (
-                                            <div className="fixed inset-0 z-10" onClick={() => setShowProductList(false)}></div>
-                                        )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="font-bold text-stone-700 dark:text-stone-300">{order.customer_name}</div>
+                                            {order.table_number ? (
+                                                <span className="inline-block mt-1 px-2 py-0.5 rounded bg-red-100 text-italian-red text-xs font-bold border border-red-200">
+                                                    MESA {order.table_number}
+                                                </span>
+                                            ) : (
+                                                <div className="text-xs text-stone-500 mt-0.5 max-w-[200px] truncate">{order.customer_address || 'Retirada'}</div>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <select
+                                                value={order.status}
+                                                onChange={(e) => updateStatus(order.id, e.target.value)}
+                                                className={`text-xs font-bold uppercase py-1.5 px-3 rounded-lg border-none outline-none cursor-pointer mb-2 w-full ${getStatusColor(order.status)}`}
+                                            >
+                                                <option value="pending">Pendente</option>
+                                                <option value="approved">Aprovado</option>
+                                                <option value="preparing">Preparando</option>
+                                                <option value="ready">Pronto</option>
+                                                <option value="out_for_delivery">Em Rota</option>
+                                                <option value="delivered">Entregue</option>
+                                                <option value="cancelled">Cancelado</option>
+                                            </select>
+                                            <div className="text-xs font-bold text-stone-500 uppercase flex items-center gap-1">
+                                                {getPaymentMethodLabel(order.payment_method)}
+                                                {order.change_for && <span className="text-italian-red">(Troco: {order.change_for})</span>}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="text-sm font-bold text-stone-600 dark:text-stone-400">
+                                                {order.order_items?.length || 0} itens
+                                            </div>
+                                            <button
+                                                onClick={() => setEditingOrder({ ...order, delivery_fee: order.delivery_fee || 0 })}
+                                                className="text-xs text-blue-500 hover:underline mt-1"
+                                            >
+                                                Ver detalhes
+                                            </button>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="font-bold text-lg text-italian-green">R$ {order.total.toFixed(2)}</div>
+                                            {order.delivery_fee > 0 && <div className="text-xs text-stone-400">+ R$ {order.delivery_fee.toFixed(2)} entrega</div>}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <button onClick={() => handlePrint(order)} className="p-2 text-stone-400 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition-colors" title="Imprimir">
+                                                    <Printer size={18} />
+                                                </button>
+                                                <button onClick={() => setEditingOrder({ ...order, delivery_fee: order.delivery_fee || 0 })} className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors" title="Editar">
+                                                    <Pencil size={18} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {loading && <div className="col-span-full py-12 text-center text-stone-400">Carregando...</div>}
+                        {!loading && filteredOrders.length === 0 && (
+                            <div className="col-span-full py-20 text-center">
+                                <h3 className="text-lg font-bold text-stone-600 dark:text-stone-300">Nenhum pedido encontrado</h3>
+                            </div>
+                        )}
+                        {filteredOrders.map(order => (
+                            <div key={order.id} className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                                {/* Card Header */}
+                                <div className="p-4 border-b border-stone-100 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/30">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <span className="font-bold text-lg text-stone-800 dark:text-stone-200">#{order.order_number || order.id.slice(0, 6)}</span>
+                                            <div className="text-xs text-stone-500 flex items-center gap-1">
+                                                <Clock size={12} /> {new Date(order.created_at).toLocaleTimeString().slice(0, 5)}
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="font-bold text-italian-green">R$ {order.total.toFixed(2)}</div>
+                                            <div className="text-[10px] font-bold text-stone-500 uppercase">{getPaymentMethodLabel(order.payment_method)}</div>
+                                        </div>
                                     </div>
+                                    <div className="font-medium text-stone-700 dark:text-stone-300 text-sm truncate">{order.customer_name}</div>
+                                </div>
 
-                                    {/* Items List */}
-                                    <div className="space-y-2">
-                                        {editingOrder.order_items.map((item, index) => (
-                                            <div key={index} className="flex items-center justify-between bg-white dark:bg-stone-800 p-3 rounded-lg border border-stone-200 dark:border-stone-700 shadow-sm group hover:border-italian-red/30 transition-colors">
-                                                <div className="flex-1 min-w-0 mr-4">
-                                                    <div className="font-bold text-stone-800 dark:text-stone-200 text-sm truncate">{item.product_name}</div>
-                                                    <div className="text-xs text-stone-500">R$ {item.price.toFixed(2)} un.</div>
-                                                </div>
-                                                <div className="flex items-center gap-3 shrink-0">
-                                                    <input
-                                                        type="number"
-                                                        min="1"
-                                                        value={item.quantity}
-                                                        onChange={(e) => handleQuantityChange(index, e.target.value)}
-                                                        className="w-12 p-1 rounded border border-stone-300 dark:border-stone-600 bg-stone-50 dark:bg-stone-900 text-center font-bold text-sm"
-                                                    />
-                                                    <div className="font-bold w-16 text-right text-italian-green text-sm">R$ {(item.price * item.quantity).toFixed(2)}</div>
-                                                    <button type="button" onClick={() => handleRemoveItem(index)} className="text-stone-400 hover:text-red-500 transition-colors">
-                                                        <XCircle size={18} />
-                                                    </button>
-                                                </div>
+                                {/* Card Body */}
+                                <div className="p-4 flex-1 overflow-y-auto max-h-[200px]">
+                                    {order.table_number ? (
+                                        <div className="mb-3">
+                                            <span className="inline-block px-2 py-1 rounded bg-red-100 text-italian-red text-xs font-bold border border-red-200 w-full text-center">
+                                                MESA {order.table_number}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div className="mb-3 text-xs text-stone-500">
+                                            <MapPin size={12} className="inline mr-1" />
+                                            {order.customer_address || 'Retirada no Balcão'}
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-1">
+                                        {order.order_items?.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between text-sm">
+                                                <span className="text-stone-600 dark:text-stone-400">
+                                                    <span className="font-bold text-stone-800 dark:text-stone-200">{item.quantity}x</span> {item.product_name}
+                                                </span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Right Column: Details & Actions */}
-                            <div className="w-full md:w-96 bg-white dark:bg-stone-900 flex flex-col shrink-0">
-                                <div className="p-6 space-y-5 flex-1 overflow-y-auto">
-
-                                    {/* Customer Info */}
-                                    <div className="space-y-3">
-                                        <h4 className="font-bold text-xs uppercase text-stone-400 tracking-wider">Cliente</h4>
-                                        <div className="space-y-2">
-                                            <input name="customer_name" defaultValue={editingOrder.customer_name} placeholder="Nome" className="w-full p-2 text-sm rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:border-italian-red outline-none transition-colors" required />
-                                            <input name="customer_phone" defaultValue={editingOrder.customer_phone} placeholder="Telefone" className="w-full p-2 text-sm rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:border-italian-red outline-none transition-colors" required />
-                                            <textarea name="customer_address" defaultValue={editingOrder.customer_address} placeholder="Endereço" className="w-full p-2 text-sm rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:border-italian-red outline-none transition-colors resize-none" rows="2" />
-                                        </div>
-                                    </div>
-
-                                    {/* Payment & Totals */}
-                                    <div className="space-y-3 pt-2 border-t border-stone-100 dark:border-stone-800">
-                                        <h4 className="font-bold text-xs uppercase text-stone-400 tracking-wider">Pagamento</h4>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <select name="payment_method" defaultValue={editingOrder.payment_method} className="w-full p-2 text-sm rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 outline-none">
-                                                <option value="pix">PIX</option>
-                                                <option value="credit">Crédito</option>
-                                                <option value="debit">Débito</option>
-                                                <option value="cash">Dinheiro</option>
-                                            </select>
-                                            <input name="change_for" defaultValue={editingOrder.change_for} placeholder="Troco para..." className="w-full p-2 text-sm rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 outline-none" />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-3 pt-2 border-t border-stone-100 dark:border-stone-800">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-sm text-stone-600 dark:text-stone-400">Taxa de Entrega</span>
-                                            <div className="flex items-center gap-1 w-24">
-                                                <span className="text-xs text-stone-400">R$</span>
-                                                <input
-                                                    name="delivery_fee"
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={editingOrder.delivery_fee}
-                                                    onChange={(e) => recalculateTotal(editingOrder.order_items, e.target.value)}
-                                                    className="w-full p-1 text-right text-sm font-medium bg-transparent border-b border-stone-200 focus:border-italian-red outline-none"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="flex justify-between items-center pt-2">
-                                            <span className="font-bold text-stone-800 dark:text-stone-100">Total Final</span>
-                                            <div className="flex items-center gap-1">
-                                                <span className="text-sm font-bold text-italian-green">R$</span>
-                                                <input
-                                                    name="total"
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={editingOrder.total}
-                                                    readOnly
-                                                    className="w-24 text-right font-bold text-xl text-italian-green bg-transparent border-none outline-none"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Footer Actions */}
-                                <div className="p-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900 flex gap-3">
-                                    <button type="button" onClick={() => setEditingOrder(null)} className="flex-1 py-2.5 rounded-lg text-stone-600 hover:bg-stone-200 dark:text-stone-300 dark:hover:bg-stone-800 font-bold text-sm transition-colors">
-                                        Cancelar
+                                {/* Card Footer */}
+                                <div className="p-3 bg-stone-50 dark:bg-stone-800/50 border-t border-stone-100 dark:border-stone-800 flex items-center gap-2">
+                                    <select
+                                        value={order.status}
+                                        onChange={(e) => updateStatus(order.id, e.target.value)}
+                                        className={`text-xs font-bold uppercase py-2 px-2 rounded-lg border-none outline-none cursor-pointer flex-1 ${getStatusColor(order.status)}`}
+                                    >
+                                        <option value="pending">Pendente</option>
+                                        <option value="approved">Aprovado</option>
+                                        <option value="preparing">Preparando</option>
+                                        <option value="ready">Pronto</option>
+                                        <option value="out_for_delivery">Saiu</option>
+                                        <option value="delivered">Entregue</option>
+                                        <option value="cancelled">Cancelado</option>
+                                    </select>
+                                    <button onClick={() => handlePrint(order)} className="p-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-stone-500 hover:text-stone-800 shadow-sm">
+                                        <Printer size={16} />
                                     </button>
-                                    <button type="submit" className="flex-[2] py-2.5 rounded-lg bg-italian-green text-white font-bold text-sm hover:bg-green-700 shadow-lg hover:shadow-xl transition-all">
-                                        Salvar Alterações
+                                    <button onClick={() => setEditingOrder({ ...order, delivery_fee: order.delivery_fee || 0 })} className="p-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 rounded-lg text-blue-600 shadow-sm">
+                                        <Pencil size={16} />
                                     </button>
                                 </div>
                             </div>
-                        </form>
+                        ))}
                     </div>
-                </div>
-            )}
-        </div>
+                )}
+            </div>
+
+            {/* Compact Edit Modal */}
+            {
+                editingOrder && (
+                    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-stone-900 rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden border border-stone-200 dark:border-stone-700 flex flex-col max-h-[90vh]">
+
+                            {/* Header */}
+                            <div className="px-6 py-4 border-b border-stone-200 dark:border-stone-800 flex justify-between items-center bg-white dark:bg-stone-900 shrink-0">
+                                <div>
+                                    <h3 className="font-bold text-xl text-stone-800 dark:text-stone-100">Editar Pedido #{editingOrder.order_number || editingOrder.id.slice(0, 8)}</h3>
+                                    <p className="text-xs text-stone-500">Faça alterações nos itens e valores do pedido.</p>
+                                </div>
+                                <button onClick={() => setEditingOrder(null)} className="text-stone-400 hover:text-red-500 transition-colors">
+                                    <XCircle size={24} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleUpdateOrder} className="flex-1 overflow-hidden flex flex-col md:flex-row">
+
+                                {/* Left Column: Items (Scrollable) */}
+                                <div className="flex-1 overflow-y-auto p-6 border-r border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/50">
+                                    <div className="space-y-4">
+                                        {/* Product Search */}
+                                        <div className="relative">
+                                            <div className="flex items-center bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-600 rounded-lg px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-italian-red focus-within:border-transparent transition-all">
+                                                <Search size={18} className="text-stone-400 mr-2" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar produto para adicionar..."
+                                                    value={searchTerm}
+                                                    onChange={(e) => {
+                                                        setSearchTerm(e.target.value);
+                                                        setShowProductList(true);
+                                                    }}
+                                                    onFocus={() => setShowProductList(true)}
+                                                    className="flex-1 bg-transparent outline-none text-sm text-stone-800 dark:text-stone-200 placeholder-stone-400"
+                                                />
+                                            </div>
+
+                                            {showProductList && searchTerm && (
+                                                <div className="absolute z-20 w-full mt-1 bg-white dark:bg-stone-800 rounded-lg shadow-xl border border-stone-200 dark:border-stone-700 max-h-48 overflow-y-auto">
+                                                    {filteredProducts.length > 0 ? (
+                                                        filteredProducts.map(product => (
+                                                            <div
+                                                                key={product.id}
+                                                                onClick={() => handleAddItem(product)}
+                                                                className="px-4 py-2 hover:bg-stone-100 dark:hover:bg-stone-700 cursor-pointer flex justify-between items-center border-b border-stone-100 dark:border-stone-700 last:border-0 transition-colors text-sm"
+                                                            >
+                                                                <span className="font-medium text-stone-800 dark:text-stone-200">{product.name}</span>
+                                                                <span className="text-italian-green font-bold">R$ {product.price.toFixed(2)}</span>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="p-3 text-stone-500 text-center text-sm">Nenhum produto encontrado</div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {showProductList && (
+                                                <div className="fixed inset-0 z-10" onClick={() => setShowProductList(false)}></div>
+                                            )}
+                                        </div>
+
+                                        {/* Items List */}
+                                        <div className="space-y-2">
+                                            {editingOrder.order_items.map((item, index) => (
+                                                <div key={index} className="flex items-center justify-between bg-white dark:bg-stone-800 p-3 rounded-lg border border-stone-200 dark:border-stone-700 shadow-sm group hover:border-italian-red/30 transition-colors">
+                                                    <div className="flex-1 min-w-0 mr-4">
+                                                        <div className="font-bold text-stone-800 dark:text-stone-200 text-sm truncate">{item.product_name}</div>
+                                                        <div className="text-xs text-stone-500">R$ {item.price.toFixed(2)} un.</div>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 shrink-0">
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            value={item.quantity}
+                                                            onChange={(e) => handleQuantityChange(index, e.target.value)}
+                                                            className="w-12 p-1 rounded border border-stone-300 dark:border-stone-600 bg-stone-50 dark:bg-stone-900 text-center font-bold text-sm"
+                                                        />
+                                                        <div className="font-bold w-16 text-right text-italian-green text-sm">R$ {(item.price * item.quantity).toFixed(2)}</div>
+                                                        <button type="button" onClick={() => handleRemoveItem(index)} className="text-stone-400 hover:text-red-500 transition-colors">
+                                                            <XCircle size={18} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Column: Details & Actions */}
+                                <div className="w-full md:w-96 bg-white dark:bg-stone-900 flex flex-col shrink-0">
+                                    <div className="p-6 space-y-5 flex-1 overflow-y-auto">
+
+                                        {/* Customer Info */}
+                                        <div className="space-y-3">
+                                            <h4 className="font-bold text-xs uppercase text-stone-400 tracking-wider">Cliente</h4>
+                                            <div className="space-y-2">
+                                                <input name="customer_name" defaultValue={editingOrder.customer_name} placeholder="Nome" className="w-full p-2 text-sm rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:border-italian-red outline-none transition-colors" required />
+                                                <input name="customer_phone" defaultValue={editingOrder.customer_phone} placeholder="Telefone" className="w-full p-2 text-sm rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:border-italian-red outline-none transition-colors" required />
+                                                <textarea name="customer_address" defaultValue={editingOrder.customer_address} placeholder="Endereço" className="w-full p-2 text-sm rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:border-italian-red outline-none transition-colors resize-none" rows="2" />
+                                            </div>
+                                        </div>
+
+                                        {/* Payment & Totals */}
+                                        <div className="space-y-3 pt-2 border-t border-stone-100 dark:border-stone-800">
+                                            <h4 className="font-bold text-xs uppercase text-stone-400 tracking-wider">Pagamento</h4>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <select name="payment_method" defaultValue={editingOrder.payment_method} className="w-full p-2 text-sm rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 outline-none">
+                                                    <option value="pix">PIX</option>
+                                                    <option value="credit">Crédito</option>
+                                                    <option value="debit">Débito</option>
+                                                    <option value="cash">Dinheiro</option>
+                                                </select>
+                                                <input name="change_for" defaultValue={editingOrder.change_for} placeholder="Troco para..." className="w-full p-2 text-sm rounded border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 outline-none" />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3 pt-2 border-t border-stone-100 dark:border-stone-800">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm text-stone-600 dark:text-stone-400">Taxa de Entrega</span>
+                                                <div className="flex items-center gap-1 w-24">
+                                                    <span className="text-xs text-stone-400">R$</span>
+                                                    <input
+                                                        name="delivery_fee"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={editingOrder.delivery_fee}
+                                                        onChange={(e) => recalculateTotal(editingOrder.order_items, e.target.value)}
+                                                        className="w-full p-1 text-right text-sm font-medium bg-transparent border-b border-stone-200 focus:border-italian-red outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center pt-2">
+                                                <span className="font-bold text-stone-800 dark:text-stone-100">Total Final</span>
+                                                <div className="flex items-center gap-1">
+                                                    <span className="text-sm font-bold text-italian-green">R$</span>
+                                                    <input
+                                                        name="total"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={editingOrder.total}
+                                                        readOnly
+                                                        className="w-24 text-right font-bold text-xl text-italian-green bg-transparent border-none outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Footer Actions */}
+                                    <div className="p-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900 flex gap-3">
+                                        <button type="button" onClick={() => setEditingOrder(null)} className="flex-1 py-2.5 rounded-lg text-stone-600 hover:bg-stone-200 dark:text-stone-300 dark:hover:bg-stone-800 font-bold text-sm transition-colors">
+                                            Cancelar
+                                        </button>
+                                        <button type="submit" className="flex-[2] py-2.5 rounded-lg bg-italian-green text-white font-bold text-sm hover:bg-green-700 shadow-lg hover:shadow-xl transition-all">
+                                            Salvar Alterações
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 

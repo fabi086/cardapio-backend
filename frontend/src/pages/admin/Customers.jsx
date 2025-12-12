@@ -210,24 +210,24 @@ const Customers = () => {
     return (
         <div className="flex h-screen bg-stone-50 dark:bg-black overflow-hidden relative">
 
-            {/* Sidebar Filters (Desktop) */}
-            <div className="w-64 bg-white dark:bg-stone-900 border-r border-stone-200 dark:border-stone-800 p-6 flex-col hidden lg:flex">
-                <h2 className="text-xl font-display font-bold text-stone-800 dark:text-stone-100 mb-6 flex items-center gap-2">
+            {/* Sidebar Filters (Responsive) */}
+            <div className="w-full lg:w-64 bg-white dark:bg-stone-900 border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-stone-800 p-4 lg:p-6 flex flex-col gap-6 shrink-0 h-auto lg:h-full overflow-y-auto">
+                <h2 className="text-xl font-display font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
                     <Filter size={20} /> Filtros
                 </h2>
 
-                <div className="space-y-6">
+                <div className="flex flex-col gap-6">
                     {/* Status Filter */}
                     <div>
                         <label className="text-xs font-bold uppercase text-stone-400 mb-3 block">Status do Cliente</label>
-                        <div className="space-y-2">
+                        <div className="flex flex-row lg:flex-col gap-2 lg:gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
                             {[
                                 { id: 'all', label: 'Todos' },
-                                { id: 'vip', label: '💎 VIP (Pede Muito)' },
-                                { id: 'active', label: '🟢 Ativos (Recentes)' },
-                                { id: 'inactive', label: '💤 Inativos (Sumidos)' },
+                                { id: 'vip', label: '💎 VIP' },
+                                { id: 'active', label: '🟢 Ativos' },
+                                { id: 'inactive', label: '💤 Inativos' },
                             ].map(opt => (
-                                <label key={opt.id} className="flex items-center gap-2 cursor-pointer group">
+                                <label key={opt.id} className="flex items-center gap-2 cursor-pointer group bg-stone-50 dark:bg-stone-800 lg:bg-transparent px-3 py-2 lg:p-0 rounded-lg lg:rounded-none border lg:border-none border-stone-200 dark:border-stone-700 whitespace-nowrap">
                                     <input
                                         type="radio"
                                         name="status"
@@ -259,7 +259,7 @@ const Customers = () => {
                     </div>
 
                     {/* Import Button */}
-                    <div className="pt-6 border-t border-stone-100 dark:border-stone-800">
+                    <div className="pt-2 lg:pt-6 lg:border-t border-stone-100 dark:border-stone-800">
                         <label className={`w-full flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed border-stone-300 dark:border-stone-700 hover:border-italian-red cursor-pointer transition-colors ${importing ? 'opacity-50' : ''}`}>
                             <Upload size={18} className="text-stone-400" />
                             <span className="text-xs font-bold text-stone-500">Importar Excel/CSV</span>
@@ -271,17 +271,17 @@ const Customers = () => {
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col h-full overflow-hidden">
-                <div className="p-8 pb-4">
-                    <div className="flex justify-between items-end mb-6">
+                <div className="p-4 md:p-8 pb-4">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
                         <div>
-                            <h1 className="text-3xl font-display text-stone-800 dark:text-stone-100 mb-1">CRM Clientes</h1>
+                            <h1 className="text-2xl md:text-3xl font-display text-stone-800 dark:text-stone-100 mb-1">CRM Clientes</h1>
                             <p className="text-stone-500 dark:text-stone-400 text-sm">
                                 {filteredCustomers.length} clientes encontrados
                             </p>
                         </div>
 
                         {/* Search Bar */}
-                        <div className="bg-white dark:bg-stone-900 shadow-sm border border-stone-200 dark:border-stone-800 rounded-lg p-1 w-full max-w-md flex items-center">
+                        <div className="bg-white dark:bg-stone-900 shadow-sm border border-stone-200 dark:border-stone-800 rounded-lg p-1 w-full md:max-w-md flex items-center">
                             <Search className="ml-3 text-stone-400 shrink-0" size={20} />
                             <input
                                 type="text"
@@ -311,9 +311,9 @@ const Customers = () => {
                 </div>
 
                 {/* Table */}
-                <div className="flex-1 overflow-y-auto px-8 pb-8">
-                    <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-hidden">
-                        <table className="w-full text-left border-collapse">
+                <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
+                    <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[800px]">
                             <thead className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 dark:text-stone-400 font-bold text-xs uppercase tracking-wider sticky top-0 z-10">
                                 <tr>
                                     <th className="px-6 py-4 w-12 text-center">

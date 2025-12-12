@@ -7,7 +7,7 @@ const TabButton = ({ id, label, icon, activeTab, setActiveTab }) => {
     return (
         <button
             onClick={() => setActiveTab(id)}
-            className={`p-3 rounded-lg text-left font-medium flex items-center gap-3 transition-all text-sm ${activeTab === id ? 'bg-italian-red text-white shadow-md' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}`}
+            className={`p-3 rounded-lg text-left font-medium flex items-center gap-3 transition-all text-sm whitespace-nowrap ${activeTab === id ? 'bg-italian-red text-white shadow-md' : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'}`}
         >
             <Icon size={18} /> {label}
         </button>
@@ -321,7 +321,7 @@ const Settings = () => {
 
             <div className="flex flex-col lg:flex-row gap-6">
                 {/* Compact Sidebar */}
-                <div className="w-full lg:w-56 flex flex-col gap-1 shrink-0">
+                <div className="w-full lg:w-56 flex flex-row lg:flex-col gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-hide shrink-0">
                     <TabButton id="general" label="Geral" icon={Building2} activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="appearance" label="Identidade Visual" icon={Palette} activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="social" label="Redes Sociais" icon={Share2} activeTab={activeTab} setActiveTab={setActiveTab} />
