@@ -14,9 +14,9 @@ async function checkProductionData() {
     const { data: logs, error: logsError } = await supabase
         .from('system_logs')
         .select('*')
-        .in('level', ['error', 'warning']) // Fetch warnings too
+        .in('level', ['error', 'warning', 'info']) // Fetch info too
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(10);
 
     if (logsError) log('logs error: ' + logsError.message);
     else {
