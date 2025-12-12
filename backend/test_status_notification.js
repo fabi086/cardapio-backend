@@ -23,7 +23,25 @@ async function testStatusNotification() {
     console.log(`Sending test notification to: ${testPhone}`);
 
     try {
-        await aiService.sendNotification(testPhone, 'out_for_delivery', 12345);
+        // 2. Get a real order to test
+        const { data: lastOrder } = await supabase
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (!lastOrder) {
+            console.error('No orders found in DB to test with.');
+            return;
+        }
+
+        console.log(`Using order #${lastOrder.order_number} (ID: ${lastOrder.id}) for test.`);
+
+        // Use the admin phone (testPhone) but keeping the order context
+        // Note: This will send a message to the ADMIN phone saying "Status of Order X changed"
+
+        await aiService.sendNotification(testPhone, 'out_for_delivery', lastOrder.id);
         console.log('✅ Notification function called successfully.');
     } catch (error) {
         console.error('❌ Notification failed:', error);

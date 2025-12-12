@@ -115,7 +115,7 @@ const Orders = () => {
             // Notify AI Agent
             const order = orders.find(o => o.id === orderId);
             if (order && order.customer_phone) {
-                const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3002' : window.location.origin);
+                const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3002' : 'https://cardapio-backend-jzit.vercel.app');
                 // Don't await this, let it run in background
                 fetch(`${API_URL}/api/ai/notify-status`, {
                     method: 'POST',
@@ -400,8 +400,8 @@ const Orders = () => {
                                     key={filter.id}
                                     onClick={() => setDateRange(filter.id)}
                                     className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${dateRange === filter.id
-                                            ? 'bg-white dark:bg-stone-800 shadow-sm text-stone-800 dark:text-stone-200 ring-1 ring-black/5 dark:ring-white/10'
-                                            : 'text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200/50 dark:hover:bg-stone-800'
+                                        ? 'bg-white dark:bg-stone-800 shadow-sm text-stone-800 dark:text-stone-200 ring-1 ring-black/5 dark:ring-white/10'
+                                        : 'text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 hover:bg-stone-200/50 dark:hover:bg-stone-800'
                                         }`}
                                 >
                                     {filter.label}

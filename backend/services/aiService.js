@@ -1145,9 +1145,7 @@ REGRAS IMPORTANTES:
                             presence: 'composing',
                             linkPreview: true
                         },
-                        textMessage: {
-                            text: message
-                        }
+                        text: message
                     };
                 }
 
@@ -1169,7 +1167,7 @@ REGRAS IMPORTANTES:
             }
 
         } catch (error) {
-            console.error('Error sending message:', error.response?.data || error.message);
+            console.error('Error sending message:', JSON.stringify(error.response?.data || error.message, null, 2));
             this.logToDb('error', 'Failed to send message', { error: error.message, remoteJid });
             const fs = require('fs');
             try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ERROR SENDING: ${error.message}\n`); } catch (e) { }
