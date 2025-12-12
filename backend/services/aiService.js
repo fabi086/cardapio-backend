@@ -1257,6 +1257,17 @@ REGRAS IMPORTANTES:
         if (orderDetails) {
             message += `\n\n💰 *Total:* R$ ${orderDetails.total.toFixed(2)}`;
             if (orderDetails.delivery_fee > 0) message += ` (Taxa: R$ ${orderDetails.delivery_fee.toFixed(2)})`;
+
+            // Payment Method
+            const paymentMap = {
+                'credit': 'Cartão de Crédito',
+                'debit': 'Cartão de Débito',
+                'pix': 'PIX',
+                'cash': 'Dinheiro'
+            };
+            const paymentLabel = paymentMap[orderDetails.payment_method] || orderDetails.payment_method || 'Não informado';
+            message += `\n💳 *Pagamento:* ${paymentLabel}`;
+            if (orderDetails.change_for) message += ` (Troco para R$ ${orderDetails.change_for})`;
         }
 
         if (addressText) message += addressText;
