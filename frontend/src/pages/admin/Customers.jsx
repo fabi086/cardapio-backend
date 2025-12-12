@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Search, User, Phone, MapPin, ShoppingBag, Calendar, ArrowRight, X, Filter, Upload, Send, CheckSquare, Square, MoreHorizontal } from 'lucide-react';
+import { Search, User, Phone, MapPin, ShoppingBag, Calendar, ArrowRight, X, Filter, Upload, Send, CheckSquare, Square, MoreHorizontal, Plus, Edit, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import CampaignModal from '../../components/CampaignModal';
+import CustomerFormModal from '../../components/CustomerFormModal';
 
 const Customers = () => {
     const [customers, setCustomers] = useState([]);
@@ -18,6 +19,10 @@ const Customers = () => {
     const [statusFilter, setStatusFilter] = useState('all'); // all, vip, active, inactive
     const [neighborhoodFilter, setNeighborhoodFilter] = useState('all');
     const [importing, setImporting] = useState(false);
+
+    // CRUD States
+    const [showFormModal, setShowFormModal] = useState(false);
+    const [editingCustomer, setEditingCustomer] = useState(null);
 
     useEffect(() => {
         fetchCustomers();
@@ -108,6 +113,62 @@ const Customers = () => {
             setSelectedIds(new Set());
         } else {
             setSelectedIds(new Set(filteredCustomers.map(c => c.id)));
+        }
+    };
+
+    // CRUD Logic
+    const handleAddCustomer = () => {
+        setEditingCustomer(null);
+        setShowFormModal(true);
+    };
+
+    const handleEditCustomer = (customer) => {
+        setEditingCustomer(customer);
+        setShowFormModal(true);
+    };
+
+    const handleSaveCustomer = async (data) => {
+        try {
+            if (editingCustomer) {
+                // Update
+                const { error } = await supabase
+                    .from('customers')
+                    .update(data)
+                    .eq('id', editingCustomer.id);
+                if (error) throw error;
+            } else {
+                // Insert
+                const { error } = await supabase
+                    .from('customers')
+                    .insert([{ ...data, created_at: new Date() }]);
+                if (error) throw error;
+            }
+            setShowFormModal(false);
+            fetchCustomers();
+        } catch (error) {
+            console.error('Error saving customer:', error);
+            alert('Erro ao salvar cliente: ' + error.message);
+            throw error;
+        }
+    };
+
+    const handleDeleteCustomer = async (id) => {
+        if (!window.confirm('Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.')) return;
+
+        try {
+            const { error } = await supabase
+                .from('customers')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+
+            fetchCustomers();
+            // If deleted customer was selected, unselect
+            if (selectedCustomer && selectedCustomer.id === id) setSelectedCustomer(null);
+        } catch (error) {
+            console.error('Error deleting customer:', error);
+            alert('Erro ao excluir cliente. Verifique se existem pedidos vinculados.');
         }
     };
 
@@ -259,7 +320,15 @@ const Customers = () => {
                     </div>
 
                     {/* Import Button */}
-                    <div className="pt-2 lg:pt-6 lg:border-t border-stone-100 dark:border-stone-800">
+                    <div className="pt-2 lg:pt-6 lg:border-t border-stone-100 dark:border-stone-800 space-y-3">
+                        <button
+                            onClick={handleAddCustomer}
+                            className="w-full flex items-center justify-center gap-2 p-3 rounded-lg bg-italian-green text-white hover:bg-green-700 shadow-md transition-colors"
+                        >
+                            <Plus size={18} />
+                            <span className="text-xs font-bold uppercase">Novo Cliente</span>
+                        </button>
+
                         <label className={`w-full flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed border-stone-300 dark:border-stone-700 hover:border-italian-red cursor-pointer transition-colors ${importing ? 'opacity-50' : ''}`}>
                             <Upload size={18} className="text-stone-400" />
                             <span className="text-xs font-bold text-stone-500">Importar Excel/CSV</span>
@@ -372,12 +441,29 @@ const Customers = () => {
                                                 <div className="text-[10px] text-stone-400">Último: {customer.days_since_last === 999 ? '-' : `${customer.days_since_last}d`}</div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <button
-                                                    onClick={() => handleCustomerClick(customer)}
-                                                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 hover:text-stone-800 transition-colors ml-auto"
-                                                >
-                                                    <MoreHorizontal size={18} />
-                                                </button>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button
+                                                        onClick={() => handleEditCustomer(customer)}
+                                                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-blue-50 dark:hover:bg-blue-900/20 text-stone-400 hover:text-blue-500 transition-colors"
+                                                        title="Editar"
+                                                    >
+                                                        <Edit size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteCustomer(customer.id)}
+                                                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/20 text-stone-400 hover:text-red-500 transition-colors"
+                                                        title="Excluir"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleCustomerClick(customer)}
+                                                        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 hover:text-stone-800 transition-colors"
+                                                        title="Ver Detalhes"
+                                                    >
+                                                        <MoreHorizontal size={18} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
@@ -393,6 +479,15 @@ const Customers = () => {
                 <CampaignModal
                     customers={filteredCustomers.filter(c => selectedIds.has(c.id))}
                     onClose={() => setShowCampaignModal(false)}
+                />
+            )}
+
+            {/* Customer Form Modal */}
+            {showFormModal && (
+                <CustomerFormModal
+                    customer={editingCustomer}
+                    onClose={() => setShowFormModal(false)}
+                    onSave={handleSaveCustomer}
                 />
             )}
 

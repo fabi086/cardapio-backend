@@ -11,6 +11,7 @@ class AIService {
     constructor() {
         this.settings = null;
         this.openai = null;
+        console.log('AIService initialized');
     }
 
     async loadSettings() {
@@ -1168,7 +1169,11 @@ REGRAS IMPORTANTES:
 
         } catch (error) {
             console.error('Error sending message:', JSON.stringify(error.response?.data || error.message, null, 2));
-            this.logToDb('error', 'Failed to send message', { error: error.message, remoteJid });
+            this.logToDb('error', 'Failed to send message', {
+                error: error.message,
+                responseData: error.response?.data || 'No response data',
+                remoteJid
+            });
             const fs = require('fs');
             try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ERROR SENDING: ${error.message}\n`); } catch (e) { }
         }
