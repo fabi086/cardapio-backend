@@ -83,7 +83,7 @@ const Orders = () => {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setOrders(data);
+            setOrders(data || []);
         } catch (error) {
             console.error('Error fetching orders:', error);
         } finally {
@@ -95,7 +95,7 @@ const Orders = () => {
         try {
             const { data, error } = await supabase.from('products').select('*').order('name');
             if (error) throw error;
-            setProducts(data);
+            setProducts(data || []);
         } catch (error) {
             console.error('Error fetching products:', error);
         }

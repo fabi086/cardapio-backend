@@ -40,7 +40,7 @@ const Customers = () => {
             if (error) throw error;
 
             // Process RFM Data
-            const processed = data.map(c => {
+            const processed = (data || []).map(c => {
                 const orders = c.orders || [];
                 const totalOrders = orders.length;
                 const lastOrderDate = orders.length > 0
@@ -165,7 +165,7 @@ const Customers = () => {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setCustomerOrders(data);
+            setCustomerOrders(data || []);
 
             if (data && data.length > 0) {
                 const totalSpent = data.reduce((sum, order) => sum + (order.total || 0), 0);
