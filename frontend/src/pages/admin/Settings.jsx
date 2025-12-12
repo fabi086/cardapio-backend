@@ -301,7 +301,7 @@ const Settings = () => {
 
     const getBaseUrl = () => {
         if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL.replace(/\/$/, '');
-        return window.location.hostname === 'localhost' ? 'http://localhost:3002' : 'https://cardapio-backend-jzit.vercel.app';
+        return window.location.hostname === 'localhost' ? 'http://localhost:3002' : '';
     };
     const webhookUrl = `${getBaseUrl()}/api/ai/webhook`;
 
