@@ -122,6 +122,7 @@ router.post('/send-message', async (req, res) => {
         const { phone, message, mediaUrl } = req.body;
 
         if (!phone || !message) {
+            aiService.logToDb('warning', 'Send Message Validation Failed', { phone, messageProvided: !!message });
             return res.status(400).json({ error: 'Telefone e mensagem são obrigatórios' });
         }
 
