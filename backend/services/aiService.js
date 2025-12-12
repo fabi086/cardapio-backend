@@ -1102,7 +1102,13 @@ REGRAS IMPORTANTES:
     }
 
     async sendMessage(remoteJid, message, channel = 'whatsapp', mediaUrl = null) {
-        console.log(`Sending message to ${remoteJid}:`, message, mediaUrl ? `(with media: ${mediaUrl})` : '');
+        // Standardize Phone Number: Ensure it starts with country code (55 for Brazil default)
+        let cleanNumber = remoteJid.replace(/\D/g, '');
+        if (cleanNumber.length >= 10 && cleanNumber.length <= 11) {
+            cleanNumber = '55' + cleanNumber;
+        }
+
+        console.log(`Sending message to ${cleanNumber}@s.whatsapp.net:`, message, mediaUrl ? `(with media)` : '');
         const fs = require('fs');
         const path = require('path');
         const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
@@ -1125,7 +1131,7 @@ REGRAS IMPORTANTES:
                     // Media Message
                     url = `${this.settings.evolution_api_url}/message/sendMedia/${this.settings.instance_name}`;
                     payload = {
-                        number: remoteJid.replace('@s.whatsapp.net', ''),
+                        number: cleanNumber,
                         options: {
                             delay: 1200,
                             presence: 'composing'
@@ -1140,7 +1146,7 @@ REGRAS IMPORTANTES:
                     // Text Message
                     url = `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`;
                     payload = {
-                        number: remoteJid.replace('@s.whatsapp.net', ''),
+                        number: cleanNumber,
                         options: {
                             delay: 1200,
                             presence: 'composing',
