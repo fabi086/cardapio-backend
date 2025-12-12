@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { supabase } from '../../lib/supabase';
-import { Clock, CheckCircle, ChefHat, Truck, Printer, XCircle, ChevronDown, ChevronUp, Grid, List, Filter, Search, Pencil } from 'lucide-react';
+import { Clock, CheckCircle, ChefHat, Truck, Printer, XCircle, ChevronDown, ChevronUp, Grid, List, Filter, Search, Pencil, MapPin } from 'lucide-react';
 
 const Orders = () => {
     const [orders, setOrders] = useState([]);
