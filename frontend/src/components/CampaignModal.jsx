@@ -12,7 +12,8 @@ const CampaignModal = ({ customers, onClose }) => {
     const [logs, setLogs] = useState([]);
     const [isPaused, setIsPaused] = useState(false);
 
-    const API_URL = (import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3002' : 'https://cardapio-backend-jzit.vercel.app')).replace(/\/$/, '');
+    // Use relative path '' for production to rely on Vercel rewrites (Same Origin)
+    const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:3002' : '';
 
     const handleAddVariation = () => {
         setVariations([...variations, '']);
