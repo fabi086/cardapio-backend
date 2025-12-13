@@ -46,9 +46,10 @@ router.post('/webhook', async (req, res) => {
             await aiService.processMessage({
                 remoteJid: remoteJid,
                 pushName: data.pushName || (typeof sender === 'object' ? sender.name : null),
-                conversation: data.message?.conversation || data.message?.extendedTextMessage?.text,
+                conversation: data.message?.conversation || data.message?.extendedTextMessage?.text || data.message?.imageMessage?.caption,
                 audioMessage: data.message?.audioMessage,
-                base64: data.base64 || data.message?.audioMessage?.base64,
+                imageMessage: data.message?.imageMessage,
+                base64: data.base64 || data.message?.audioMessage?.base64 || data.message?.imageMessage?.base64,
                 messageType: data.messageType
             });
         }

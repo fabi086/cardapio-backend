@@ -81,7 +81,7 @@ class AIService {
 
     // --- TOOLS IMPLEMENTATION ---
 
-    async getMenu() {
+    async getMenu(categoryName = null) {
         const fs = require('fs');
         const path = require('path');
         const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
@@ -94,14 +94,38 @@ class AIService {
             }
         };
 
-        logToFile('Tool called: getMenu');
-        logToFile(`Supabase URL defined: ${!!process.env.SUPABASE_URL}`);
+        logToFile(`Tool called: getMenu with category: ${categoryName || 'all'}`);
 
         try {
-            const { data: products, error } = await supabase
+            // Fetch categories first
+            const { data: categories, error: catError } = await supabase
+                .from('categories')
+                .select('id, name')
+                .order('display_order');
+
+            if (catError) {
+                logToFile(`Error fetching categories: ${catError.message}`);
+            }
+
+            // Build query
+            let query = supabase
                 .from('products')
                 .select('id, name, description, price, category_id')
                 .eq('is_available', true);
+
+            // If category specified, filter by it
+            if (categoryName && categories) {
+                const category = categories.find(c =>
+                    c.name.toLowerCase().includes(categoryName.toLowerCase()) ||
+                    categoryName.toLowerCase().includes(c.name.toLowerCase())
+                );
+                if (category) {
+                    query = query.eq('category_id', category.id);
+                    logToFile(`Filtering by category: ${category.name} (id: ${category.id})`);
+                }
+            }
+
+            const { data: products, error } = await query;
 
             if (error) {
                 logToFile(`Supabase Error: ${JSON.stringify(error)}`);
@@ -109,7 +133,28 @@ class AIService {
             }
 
             logToFile(`Query success. Found ${products ? products.length : 0} items.`);
-            return JSON.stringify(products);
+
+            // If no category specified, return list of categories for user to choose
+            if (!categoryName && categories && categories.length > 0) {
+                return JSON.stringify({
+                    action: 'ask_category',
+                    categories: categories.map(c => c.name),
+                    message: 'Temos várias categorias! Qual você gostaria de ver?'
+                });
+            }
+
+            // Format products for WhatsApp-friendly display
+            const formattedProducts = products.map(p => ({
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                description: p.description?.substring(0, 60) || ''
+            }));
+
+            return JSON.stringify({
+                products: formattedProducts,
+                count: formattedProducts.length
+            });
         } catch (err) {
             logToFile(`Unexpected Error: ${err.message}`);
             return JSON.stringify({ error: err.message });
@@ -760,27 +805,40 @@ class AIService {
             return [];
         }
 
-        const { remoteJid, pushName, conversation, audioMessage, base64 } = messageData;
+        const { remoteJid, pushName, conversation, audioMessage, imageMessage, base64 } = messageData;
         let userMessage = conversation || messageData.text?.message;
+        let imageBase64 = null;
         const userPhone = remoteJid.replace('@s.whatsapp.net', '').replace('@lid', '');
 
-        if (audioMessage || base64) {
+        // Handle audio messages
+        if (audioMessage && base64) {
             console.log('Audio message detected');
-            if (base64) {
-                userMessage = await this.transcribeAudio(base64);
-                if (!userMessage) {
-                    await this.sendMessage(remoteJid, 'Desculpe, não consegui entender o áudio.', channel);
-                    return [];
-                }
-                console.log('Transcribed text:', userMessage);
-            } else {
-                console.log('Audio message without base64 data');
-                await this.sendMessage(remoteJid, 'Não consegui processar o áudio. Pode escrever?', channel);
+            userMessage = await this.transcribeAudio(base64);
+            if (!userMessage) {
+                await this.sendMessage(remoteJid, 'Desculpe, não consegui entender o áudio. 🎤 Pode tentar de novo ou digitar?', channel);
                 return [];
+            }
+            console.log('Transcribed text:', userMessage);
+        }
+
+        // Handle image messages
+        if (imageMessage && base64) {
+            console.log('Image message detected');
+            imageBase64 = base64;
+            // If no caption, ask what they want to do with the image
+            if (!userMessage) {
+                userMessage = '[Usuário enviou uma imagem]';
             }
         }
 
-        if (!userMessage) return [];
+        // If only audio/image without base64, ask to type
+        if ((audioMessage || imageMessage) && !base64) {
+            console.log('Media message without base64 data');
+            await this.sendMessage(remoteJid, 'Não consegui processar a mídia. 😅 Pode me descrever o que você precisa?', channel);
+            return [];
+        }
+
+        if (!userMessage && !imageBase64) return [];
 
         console.log(`User Message(${userPhone}): ${userMessage}`);
 
@@ -817,7 +875,14 @@ Telefone: ${userPhone}
 1. **BOAS-VINDAS**
    - Cumprimente pelo nome se souber
    - Pergunte como pode ajudar
-   - Se pedirem cardápio, use \`get_menu\` e organize bonito
+   - Se pedirem cardápio:
+     * PRIMEIRO chame \`get_menu\` SEM categoria para ver as categorias disponíveis
+     * Pergunte qual categoria o cliente quer ver (ex: "Temos Lanches, Pizzas, Bebidas... qual te interessa?")
+     * Depois chame \`get_menu\` com a categoria escolhida
+     * Formate os produtos de forma LIMPA: um emoji + nome + preço por linha, sem descrições longas
+     * Exemplo de formatação:
+       🍔 X-Salada - R$ 22,50
+       🍔 Smash Burger - R$ 28,90
 
 2. **VERIFICAR CADASTRO**
    - Use \`register_customer\` para buscar dados salvos
@@ -852,10 +917,21 @@ Telefone: ${userPhone}
             `;
 
             // Definir messages ANTES da chamada OpenAI
+            // Se há imagem, usar formato multimodal para GPT-4 Vision
+            let userContent;
+            if (imageBase64) {
+                userContent = [
+                    { type: "text", text: userMessage || "O que você vê nesta imagem?" },
+                    { type: "image_url", url: `data:image/jpeg;base64,${imageBase64}` }
+                ];
+            } else {
+                userContent = userMessage;
+            }
+
             const messages = [
                 { role: "system", content: systemPrompt },
                 ...history,
-                { role: "user", content: userMessage }
+                { role: "user", content: userContent }
             ];
 
             // Definir tools ANTES da chamada OpenAI
@@ -864,8 +940,16 @@ Telefone: ${userPhone}
                     type: "function",
                     function: {
                         name: "get_menu",
-                        description: "Retorna os itens do cardápio.",
-                        parameters: { type: "object", properties: {} }
+                        description: "Retorna itens do cardápio. Se categoria não for especificada, retorna lista de categorias disponíveis. Sempre pergunte ao cliente qual categoria ele quer ver antes de mostrar produtos.",
+                        parameters: {
+                            type: "object",
+                            properties: {
+                                categoryName: {
+                                    type: "string",
+                                    description: "Nome da categoria para filtrar (ex: Lanches, Pizzas, Bebidas). Se não especificado, retorna lista de categorias."
+                                }
+                            }
+                        }
                     }
                 },
                 {
@@ -1033,7 +1117,7 @@ Telefone: ${userPhone}
                     let functionResult;
 
                     if (functionName === 'get_menu') {
-                        functionResult = await this.getMenu();
+                        functionResult = await this.getMenu(functionArgs.categoryName);
                     } else if (functionName === 'register_customer') {
                         // Only force-override phone if on WhatsApp (trusted sender) or if missing
                         if (channel === 'whatsapp' || !functionArgs.phone) {
