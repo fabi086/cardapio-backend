@@ -1119,71 +1119,81 @@ REGRAS IMPORTANTES:
             // Check if active
             if (!this.settings || !this.settings.is_active) {
                 console.log('AI Service is inactive, skipping message send.');
-                return;
+                return { success: false, error: 'Serviço de IA inativo' };
             }
 
             // Check API Key
-            if (this.settings.evolution_api_key) {
-                // Determine Payload Type (Text vs Media)
-                let url, payload;
-
-                if (mediaUrl) {
-                    // Media Message
-                    url = `${this.settings.evolution_api_url}/message/sendMedia/${this.settings.instance_name}`;
-                    payload = {
-                        number: cleanNumber,
-                        options: {
-                            delay: 1200,
-                            presence: 'composing'
-                        },
-                        mediaMessage: {
-                            mediatype: 'image',
-                            caption: message,
-                            media: mediaUrl
-                        }
-                    };
-                } else {
-                    // Text Message
-                    url = `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`;
-                    payload = {
-                        number: cleanNumber,
-                        options: {
-                            delay: 1200,
-                            presence: 'composing',
-                            linkPreview: true
-                        },
-                        text: message
-                    };
-                }
-
-                console.log(`Posting to Evolution API: ${url}`, JSON.stringify(payload, null, 2));
-
-                const response = await axios.post(url, payload, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': this.settings.evolution_api_key
-                    }
-                });
-
-                console.log('Evolution API Response:', response.data);
-                this.logToDb('info', 'Message Sent', { remoteJid, success: true, media: !!mediaUrl });
-
-            } else {
+            if (!this.settings.evolution_api_key) {
                 console.warn('Evolution API Key not configured');
                 this.logToDb('warning', 'Evolution API Key missing');
+                throw new Error('Evolution API Key não configurada');
             }
 
-        } catch (error) {
-            console.error('Error sending message:', JSON.stringify(error.response?.data || error.message, null, 2));
-            this.logToDb('error', 'Failed to send message', {
-                error: error.message,
-                responseData: error.response?.data || 'No response data',
-                remoteJid
+            // Determine Payload Type (Text vs Media)
+            let url, payload;
+
+            if (mediaUrl) {
+                // Media Message
+                url = `${this.settings.evolution_api_url}/message/sendMedia/${this.settings.instance_name}`;
+                payload = {
+                    number: cleanNumber,
+                    options: {
+                        delay: 1200,
+                        presence: 'composing'
+                    },
+                    mediatype: 'image',
+                    caption: message,
+                    media: mediaUrl
+                };
+            } else {
+                // Text Message
+                url = `${this.settings.evolution_api_url}/message/sendText/${this.settings.instance_name}`;
+                payload = {
+                    number: cleanNumber,
+                    options: {
+                        delay: 1200,
+                        presence: 'composing',
+                        linkPreview: true
+                    },
+                    text: message
+                };
+            }
+
+            console.log(`Posting to Evolution API: ${url}`, JSON.stringify(payload, null, 2));
+
+            const response = await axios.post(url, payload, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': this.settings.evolution_api_key
+                }
             });
-            const fs = require('fs');
-            try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ERROR SENDING: ${error.message}\n`); } catch (e) { }
+
+            console.log('Evolution API Response:', response.data);
+            this.logToDb('info', 'Message Sent', { remoteJid, success: true, media: !!mediaUrl });
+
+            return { success: true, data: response.data };
+
+        } catch (error) {
+            const errorDetails = {
+                message: error.message,
+                status: error.response?.status,
+                responseData: error.response?.data || 'No response data',
+                remoteJid,
+                cleanNumber
+            };
+
+            console.error('Error sending message:', JSON.stringify(errorDetails, null, 2));
+            this.logToDb('error', 'Failed to send message', errorDetails);
+
+            try {
+                fs.appendFileSync(logFile, `${new Date().toISOString()} - ERROR SENDING: ${JSON.stringify(errorDetails)}\n`);
+            } catch (e) { }
+
+            // Lançar o erro para que o endpoint possa capturá-lo
+            throw new Error(`Erro ao enviar mensagem: ${error.response?.data?.message || error.response?.data?.error || error.message}`);
         }
     }
+
 
     async sendNotification(phone, status, orderId) {
         console.log(`[sendNotification] Iniciando notificação para ${phone}, status: ${status}, orderId: ${orderId}`);

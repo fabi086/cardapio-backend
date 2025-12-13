@@ -14,10 +14,10 @@ async function checkLastError() {
         .limit(1);
 
     if (logs && logs.length > 0) {
-        const details = logs[0].details;
+        const fullLog = logs[0];
         const fs = require('fs');
-        fs.writeFileSync('backend/last_error.json', JSON.stringify(details.responseData || details, null, 2));
-        console.log('Error written to backend/last_error.json');
+        fs.writeFileSync('backend/last_error_full.json', JSON.stringify(fullLog, null, 2));
+        console.log('Full log written to backend/last_error_full.json');
     } else {
         console.log('No recent errors found.');
     }

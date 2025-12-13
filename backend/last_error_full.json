@@ -1,0 +1,17 @@
+{
+  "details": {
+    "error": "Request failed with status code 400",
+    "remoteJid": "11966887073@s.whatsapp.net",
+    "responseData": {
+      "error": "Bad Request",
+      "status": 400,
+      "response": {
+        "message": [
+          [
+            "instance requires property \"mediatype\""
+          ]
+        ]
+      }
+    }
+  }
+}

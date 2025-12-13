@@ -102,7 +102,10 @@ const CampaignModal = ({ customers, onClose }) => {
                     })
                 });
 
-                if (!res.ok) throw new Error('Falha API');
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    throw new Error(errorData.details || errorData.error || `Erro ${res.status}`);
+                }
 
                 sentCount++;
                 setLogs(prev => [`[${new Date().toLocaleTimeString()}] ✅ Sucesso: ${customer.name}`, ...prev]);
@@ -110,7 +113,7 @@ const CampaignModal = ({ customers, onClose }) => {
             } catch (error) {
                 console.error(`Falha ao enviar para ${customer.name}:`, error);
                 failedCount++;
-                setLogs(prev => [`[${new Date().toLocaleTimeString()}] ❌ Erro: ${customer.name}`, ...prev]);
+                setLogs(prev => [`[${new Date().toLocaleTimeString()}] ❌ Erro: ${customer.name} - ${error.message}`, ...prev]);
             }
 
             setProgress({ sent: sentCount, total: customers.length, failed: failedCount });

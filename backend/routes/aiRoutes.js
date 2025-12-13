@@ -127,14 +127,28 @@ router.post('/send-message', async (req, res) => {
         }
 
         const remoteJid = `${phone.replace(/\D/g, '')}@s.whatsapp.net`;
-        await aiService.sendMessage(remoteJid, message, 'whatsapp', mediaUrl);
+        const result = await aiService.sendMessage(remoteJid, message, 'whatsapp', mediaUrl);
 
-        res.json({ success: true });
+        // Verificar se retornou resultado de serviço inativo
+        if (result && result.success === false) {
+            return res.status(400).json({ error: result.error || 'Falha ao enviar mensagem' });
+        }
+
+        res.json({ success: true, data: result?.data });
     } catch (error) {
         console.error('Error sending generic message:', error);
-        res.status(500).json({ error: 'Falha ao enviar mensagem', details: error.message });
+        aiService.logToDb('error', 'Send Message Endpoint Failed', {
+            error: error.message,
+            phone: req.body?.phone
+        });
+        res.status(500).json({
+            error: 'Falha ao enviar mensagem',
+            details: error.message,
+            response: error.response?.data
+        });
     }
 });
+
 
 // Send Status Notification
 router.post('/notify-status', async (req, res) => {
