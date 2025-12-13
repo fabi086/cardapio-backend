@@ -37,6 +37,11 @@ router.post('/webhook', async (req, res) => {
                 }
             }
 
+            // Debug: Log the extracted remoteJid before processing
+            console.log(`[DEBUG] Original remoteJid: ${data.key.remoteJid}`);
+            console.log(`[DEBUG] Sender: ${JSON.stringify(sender)}`);
+            console.log(`[DEBUG] Final remoteJid to use: ${remoteJid}`);
+
             await aiService.processMessage({
                 remoteJid: remoteJid,
                 pushName: data.pushName || (typeof sender === 'object' ? sender.name : null),
