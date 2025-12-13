@@ -14,7 +14,9 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 router.post('/webhook', async (req, res) => {
     try {
         const { data, sender } = req.body;
-        console.log('Webhook received:', JSON.stringify(req.body, null, 2));
+        console.log('=== FULL WEBHOOK PAYLOAD ===');
+        console.log(JSON.stringify(req.body, null, 2));
+        console.log('=== END PAYLOAD ===');
 
         // Log to DB
         aiService.logToDb('info', 'Webhook Received', {
@@ -28,18 +30,17 @@ router.post('/webhook', async (req, res) => {
         if (data && data.key && !data.key.fromMe) {
             let remoteJid = data.key.remoteJid;
 
-            // Fix for LID (Linked Device ID) issues: use sender JID if available
-            if (sender) {
-                if (typeof sender === 'string' && sender.includes('@s.whatsapp.net')) {
-                    remoteJid = sender;
-                } else if (typeof sender === 'object' && sender.jid && sender.jid.includes('@s.whatsapp.net')) {
-                    remoteJid = sender.jid;
-                }
+            // Fix for LID (Linked Device ID) issues: use remoteJidAlt if available
+            if (data.key.addressingMode === 'lid' && data.key.remoteJidAlt) {
+                // When addressingMode is 'lid', the real phone number is in remoteJidAlt
+                remoteJid = data.key.remoteJidAlt;
+                console.log(`[LID FIX] Using remoteJidAlt: ${remoteJid}`);
             }
 
             // Debug: Log the extracted remoteJid before processing
             console.log(`[DEBUG] Original remoteJid: ${data.key.remoteJid}`);
-            console.log(`[DEBUG] Sender: ${JSON.stringify(sender)}`);
+            console.log(`[DEBUG] remoteJidAlt: ${data.key.remoteJidAlt}`);
+            console.log(`[DEBUG] addressingMode: ${data.key.addressingMode}`);
             console.log(`[DEBUG] Final remoteJid to use: ${remoteJid}`);
 
             await aiService.processMessage({
@@ -47,7 +48,7 @@ router.post('/webhook', async (req, res) => {
                 pushName: data.pushName || (typeof sender === 'object' ? sender.name : null),
                 conversation: data.message?.conversation || data.message?.extendedTextMessage?.text,
                 audioMessage: data.message?.audioMessage,
-                base64: data.base64 || data.message?.audioMessage?.base64, // Try to find base64
+                base64: data.base64 || data.message?.audioMessage?.base64,
                 messageType: data.messageType
             });
         }
