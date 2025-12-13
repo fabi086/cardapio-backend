@@ -256,4 +256,127 @@ router.get('/poll', async (req, res) => {
     }
 });
 
+// Generate Campaign Message with AI
+router.post('/generate-message', async (req, res) => {
+    try {
+        const { prompt, businessType } = req.body;
+
+        if (!prompt) {
+            return res.status(400).json({ error: 'Prompt é obrigatório' });
+        }
+
+        // Fetch settings to get OpenAI key
+        const { data: settings } = await supabase
+            .from('ai_integration_settings')
+            .select('openai_api_key')
+            .single();
+
+        if (!settings?.openai_api_key) {
+            return res.status(400).json({ error: 'API Key da OpenAI não configurada' });
+        }
+
+        const OpenAI = require('openai');
+        const openai = new OpenAI({ apiKey: settings.openai_api_key });
+
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+                {
+                    role: 'system',
+                    content: `Você é um especialista em marketing digital para WhatsApp. Gere mensagens promocionais criativas, persuasivas e adequadas para campanhas de WhatsApp. 
+As mensagens devem:
+- Ser curtas e diretas (máximo 300 caracteres)
+- Usar emojis de forma moderada
+- Incluir call-to-action
+- Usar {name} como placeholder para o nome do cliente
+- Ser em português brasileiro
+- Ser amigáveis e não parecer spam`
+                },
+                {
+                    role: 'user',
+                    content: `Gere 3 variações de mensagem promocional para: ${prompt}${businessType ? `. Tipo de negócio: ${businessType}` : ''}`
+                }
+            ],
+            max_tokens: 500,
+            temperature: 0.8
+        });
+
+        const content = completion.choices[0].message.content;
+
+        // Parse the response into separate messages
+        const messages = content.split('\n')
+            .filter(line => line.trim())
+            .map(line => line.replace(/^\d+[\.\)]\s*/, '').trim())
+            .filter(msg => msg.length > 10);
+
+        res.json({ success: true, messages });
+    } catch (error) {
+        console.error('Error generating message:', error);
+        res.status(500).json({ error: 'Erro ao gerar mensagem', details: error.message });
+    }
+});
+
+// Generate Campaign Image with AI (DALL-E)
+router.post('/generate-image', async (req, res) => {
+    try {
+        const { prompt } = req.body;
+
+        if (!prompt) {
+            return res.status(400).json({ error: 'Prompt é obrigatório' });
+        }
+
+        // Fetch settings to get OpenAI key
+        const { data: settings } = await supabase
+            .from('ai_integration_settings')
+            .select('openai_api_key')
+            .single();
+
+        if (!settings?.openai_api_key) {
+            return res.status(400).json({ error: 'API Key da OpenAI não configurada' });
+        }
+
+        const OpenAI = require('openai');
+        const openai = new OpenAI({ apiKey: settings.openai_api_key });
+
+        const response = await openai.images.generate({
+            model: 'dall-e-3',
+            prompt: `Create a professional marketing image for WhatsApp campaign: ${prompt}. Make it visually appealing, modern, and suitable for mobile viewing. No text in the image.`,
+            n: 1,
+            size: '1024x1024',
+            quality: 'standard'
+        });
+
+        const imageUrl = response.data[0].url;
+
+        // Download and upload to Supabase for permanent storage
+        const axios = require('axios');
+        const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+        const buffer = Buffer.from(imageResponse.data);
+
+        const fileName = `campaigns/ai_${Date.now()}.png`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('menu-items')
+            .upload(fileName, buffer, {
+                contentType: 'image/png',
+                upsert: true
+            });
+
+        if (uploadError) {
+            console.error('Upload error:', uploadError);
+            // Return OpenAI URL as fallback (expires in 1 hour)
+            return res.json({ success: true, imageUrl, temporary: true });
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+            .from('menu-items')
+            .getPublicUrl(fileName);
+
+        res.json({ success: true, imageUrl: publicUrl });
+    } catch (error) {
+        console.error('Error generating image:', error);
+        res.status(500).json({ error: 'Erro ao gerar imagem', details: error.message });
+    }
+});
+
 module.exports = router;
+

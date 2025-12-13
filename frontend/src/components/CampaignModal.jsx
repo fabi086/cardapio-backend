@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Send, Image as ImageIcon, Plus, Trash2, Clock, AlertTriangle, FileText } from 'lucide-react';
+import { X, Send, Image as ImageIcon, Plus, Trash2, Clock, AlertTriangle, FileText, Sparkles, Loader2, Wand2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const CampaignModal = ({ customers, onClose }) => {
@@ -11,6 +11,13 @@ const CampaignModal = ({ customers, onClose }) => {
     const [progress, setProgress] = useState({ sent: 0, total: customers.length, failed: 0 });
     const [logs, setLogs] = useState([]);
     const [isPaused, setIsPaused] = useState(false);
+
+    // AI Generation states
+    const [showAiMessageModal, setShowAiMessageModal] = useState(false);
+    const [showAiImageModal, setShowAiImageModal] = useState(false);
+    const [aiPrompt, setAiPrompt] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [generatedMessages, setGeneratedMessages] = useState([]);
 
     // Use relative path '' for production to rely on Vercel rewrites (Same Origin)
     const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:3002' : '';
@@ -41,14 +48,8 @@ const CampaignModal = ({ customers, onClose }) => {
             const fileName = `${Math.random()}.${fileExt}`;
             const filePath = `campaigns/${fileName}`;
 
-            // Upload directly if you have storage bucket set up, 
-            // OR for now we can just use the file object if we had a backend update for FormData.
-            // Since our backend expects a URL (mediaUrl), we MUST upload it first.
-            // Assuming 'campaign-images' bucket exists or we use a public one.
-            // If checking 'buckets' is hard, we can try to upload to 'menu-items' or similar public bucket.
-
             const { data, error } = await supabase.storage
-                .from('menu-items') // Using an existing bucket we likely have
+                .from('menu-items')
                 .upload(filePath, file);
 
             if (error) throw error;
@@ -64,6 +65,81 @@ const CampaignModal = ({ customers, onClose }) => {
         }
     };
 
+    // Generate message with AI
+    const handleGenerateMessage = async () => {
+        if (!aiPrompt.trim()) {
+            alert('Digite uma descrição da campanha');
+            return;
+        }
+
+        setIsGenerating(true);
+        setGeneratedMessages([]);
+
+        try {
+            const res = await fetch(`${API_URL}/api/ai/generate-message`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: aiPrompt })
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.details || error.error || 'Erro ao gerar');
+            }
+
+            const data = await res.json();
+            setGeneratedMessages(data.messages || []);
+        } catch (error) {
+            console.error('Error generating message:', error);
+            alert(`Erro ao gerar mensagens: ${error.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    // Apply generated messages
+    const handleApplyMessages = () => {
+        if (generatedMessages.length > 0) {
+            setVariations(generatedMessages);
+            setShowAiMessageModal(false);
+            setAiPrompt('');
+            setGeneratedMessages([]);
+        }
+    };
+
+    // Generate image with AI
+    const handleGenerateImage = async () => {
+        if (!aiPrompt.trim()) {
+            alert('Digite uma descrição da imagem');
+            return;
+        }
+
+        setIsGenerating(true);
+
+        try {
+            const res = await fetch(`${API_URL}/api/ai/generate-image`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: aiPrompt })
+            });
+
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error(error.details || error.error || 'Erro ao gerar');
+            }
+
+            const data = await res.json();
+            setImageUrl(data.imageUrl);
+            setShowAiImageModal(false);
+            setAiPrompt('');
+        } catch (error) {
+            console.error('Error generating image:', error);
+            alert(`Erro ao gerar imagem: ${error.message}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
     const startCampaign = async () => {
@@ -75,18 +151,14 @@ const CampaignModal = ({ customers, onClose }) => {
 
         for (let i = 0; i < customers.length; i++) {
             if (isPaused) {
-                // Determine how to handle pause - for now just break loop? No, busy wait?
-                // Simple version: pause stops loop completely, user has to restart or we handle "resume".
-                // Let's assume pause just breaks and we show "Paused" state.
                 break;
             }
 
             const customer = customers[i];
             const variation = variations[Math.floor(Math.random() * variations.length)];
-            const message = variation.replace('{name}', customer.name.split(' ')[0]); // First name only
+            const message = variation.replace('{name}', customer.name.split(' ')[0]);
 
             try {
-                // Add jitter to delay (± 30%)
                 const jitter = delay * 0.3;
                 const actualDelay = (delay * 1000) + (Math.random() * jitter * 2 * 1000) - (jitter * 1000);
 
@@ -118,15 +190,93 @@ const CampaignModal = ({ customers, onClose }) => {
 
             setProgress({ sent: sentCount, total: customers.length, failed: failedCount });
 
-            // Wait before next (unless it's the last one)
             if (i < customers.length - 1) {
-                setLogs(prev => [`[Agurdando ${Math.round(delay)}s...]`, ...prev]);
-                await sleep(delay * 1000); // Base delay for now, simplify jitter logic
+                setLogs(prev => [`[Aguardando ${Math.round(delay)}s...]`, ...prev]);
+                await sleep(delay * 1000);
             }
         }
 
         setStep(4);
     };
+
+    // AI Generation Modal Component
+    const AiModal = ({ title, onClose, onGenerate, onApply, isImage }) => (
+        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-stone-900 rounded-xl shadow-2xl w-full max-w-lg p-6 border border-stone-200 dark:border-stone-700" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
+                        <Sparkles className="text-purple-500" size={20} />
+                        {title}
+                    </h3>
+                    <button onClick={onClose} className="text-stone-400 hover:text-red-500">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium text-stone-700 dark:text-stone-300 mb-2 block">
+                            {isImage ? 'Descreva a imagem que você quer gerar:' : 'Descreva sua campanha:'}
+                        </label>
+                        <textarea
+                            value={aiPrompt}
+                            onChange={(e) => setAiPrompt(e.target.value)}
+                            placeholder={isImage
+                                ? 'Ex: Uma pizza margherita deliciosa com tomates frescos...'
+                                : 'Ex: Promoção de pizza para o fim de semana, 20% de desconto...'
+                            }
+                            className="w-full p-3 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-sm focus:ring-2 focus:ring-purple-500 outline-none resize-none"
+                            rows="3"
+                        />
+                    </div>
+
+                    {/* Generated messages preview */}
+                    {!isImage && generatedMessages.length > 0 && (
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-stone-700 dark:text-stone-300">
+                                Mensagens geradas:
+                            </label>
+                            <div className="max-h-48 overflow-y-auto space-y-2">
+                                {generatedMessages.map((msg, idx) => (
+                                    <div key={idx} className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800 text-sm">
+                                        {msg}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex gap-3">
+                        <button
+                            onClick={onGenerate}
+                            disabled={isGenerating || !aiPrompt.trim()}
+                            className="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {isGenerating ? (
+                                <>
+                                    <Loader2 size={18} className="animate-spin" />
+                                    Gerando...
+                                </>
+                            ) : (
+                                <>
+                                    <Wand2 size={18} />
+                                    {isImage ? 'Gerar Imagem' : 'Gerar Mensagens'}
+                                </>
+                            )}
+                        </button>
+                        {!isImage && generatedMessages.length > 0 && (
+                            <button
+                                onClick={onApply}
+                                className="flex-1 py-2.5 rounded-lg bg-italian-green text-white font-bold text-sm hover:bg-green-700 flex items-center justify-center gap-2"
+                            >
+                                ✓ Usar Estas
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -154,9 +304,17 @@ const CampaignModal = ({ customers, onClose }) => {
                             <div>
                                 <div className="flex justify-between items-center mb-2">
                                     <label className="text-sm font-bold text-stone-700 dark:text-stone-300">Mensagens (Anti-Spam)</label>
-                                    <button onClick={handleAddVariation} className="text-xs flex items-center gap-1 text-italian-green font-bold hover:underline">
-                                        <Plus size={14} /> Adicionar Variação
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => { setShowAiMessageModal(true); setAiPrompt(''); setGeneratedMessages([]); }}
+                                            className="text-xs flex items-center gap-1 text-purple-600 font-bold hover:underline bg-purple-50 dark:bg-purple-900/30 px-2 py-1 rounded-full"
+                                        >
+                                            <Sparkles size={14} /> Gerar com IA
+                                        </button>
+                                        <button onClick={handleAddVariation} className="text-xs flex items-center gap-1 text-italian-green font-bold hover:underline">
+                                            <Plus size={14} /> Adicionar Variação
+                                        </button>
+                                    </div>
                                 </div>
                                 <p className="text-xs text-stone-500 mb-3 bg-blue-50 dark:bg-blue-900/20 p-2 rounded text-blue-800 dark:text-blue-200 border border-blue-100 dark:border-blue-800">
                                     O sistema escolherá aleatoriamente uma dessas mensagens para cada cliente. Isso ajuda a evitar bloqueios.
@@ -184,7 +342,17 @@ const CampaignModal = ({ customers, onClose }) => {
 
                             {/* Image */}
                             <div>
-                                <label className="text-sm font-bold text-stone-700 dark:text-stone-300 mb-2 block">Imagem (Opcional)</label>
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="text-sm font-bold text-stone-700 dark:text-stone-300">Imagem (Opcional)</label>
+                                    {!imageUrl && (
+                                        <button
+                                            onClick={() => { setShowAiImageModal(true); setAiPrompt(''); }}
+                                            className="text-xs flex items-center gap-1 text-purple-600 font-bold hover:underline bg-purple-50 dark:bg-purple-900/30 px-2 py-1 rounded-full"
+                                        >
+                                            <Sparkles size={14} /> Gerar com IA
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="flex items-center gap-4">
                                     {imageUrl ? (
                                         <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-stone-200 dark:border-stone-700 group">
@@ -306,6 +474,27 @@ const CampaignModal = ({ customers, onClose }) => {
                     )}
                 </div>
             </div>
+
+            {/* AI Message Modal */}
+            {showAiMessageModal && (
+                <AiModal
+                    title="Gerar Mensagens com IA"
+                    onClose={() => setShowAiMessageModal(false)}
+                    onGenerate={handleGenerateMessage}
+                    onApply={handleApplyMessages}
+                    isImage={false}
+                />
+            )}
+
+            {/* AI Image Modal */}
+            {showAiImageModal && (
+                <AiModal
+                    title="Gerar Imagem com IA"
+                    onClose={() => setShowAiImageModal(false)}
+                    onGenerate={handleGenerateImage}
+                    isImage={true}
+                />
+            )}
         </div>
     );
 };
