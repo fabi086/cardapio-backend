@@ -339,11 +339,10 @@ router.post('/generate-image', async (req, res) => {
         const openai = new OpenAI({ apiKey: settings.openai_api_key });
 
         const response = await openai.images.generate({
-            model: 'dall-e-3',
-            prompt: `Create a professional marketing image for WhatsApp campaign: ${prompt}. Make it visually appealing, modern, and suitable for mobile viewing. No text in the image.`,
+            model: 'dall-e-2',
+            prompt: `Professional marketing image for WhatsApp campaign: ${prompt}. Visually appealing, modern, suitable for mobile viewing.`,
             n: 1,
-            size: '1024x1024',
-            quality: 'standard'
+            size: '512x512'
         });
 
         const imageUrl = response.data[0].url;
