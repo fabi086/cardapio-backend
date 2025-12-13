@@ -791,36 +791,8 @@ class AIService {
             const history = await this.getHistory(userPhone);
 
             const { isOpen } = this.checkOpeningHours();
-            // ... (setup prompt)
 
-            this.logToDb('info', 'Sending to OpenAI', { model: "gpt-4o-mini" });
-
-            // STRICT TIMEOUT: Vercel Free has 10s limit. We abort at 8s to verify.
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('OPENAI_TIMEOUT')), 8000)
-            );
-
-            let response;
-            try {
-                response = await Promise.race([
-                    this.openai.chat.completions.create({
-                        model: "gpt-4o-mini",
-                        messages: messages,
-                        tools: tools,
-                        tool_choice: "auto"
-                    }),
-                    timeoutPromise
-                ]);
-            } catch (err) {
-                if (err.message === 'OPENAI_TIMEOUT') {
-                    console.error('OpenAI Timed Out (8s limit)');
-                    this.logToDb('error', 'OpenAI Timeout', { limit: '8000ms' });
-                    await this.sendMessage(remoteJid, 'Estou um pouco lento agora. Poderia tentar novamente em instantes? 🐢', channel);
-                    return [];
-                }
-                throw err;
-            }
-            this.logToDb('info', 'OpenAI Response Received', { id: response.id });
+            // Definir systemPrompt ANTES da chamada OpenAI
             const systemPrompt = `
 ${this.settings.system_prompt || 'Você é um atendente virtual simpático e prestativo de uma pizzaria/restaurante.'}
 
@@ -879,12 +851,14 @@ Telefone: ${userPhone}
 - NUNCA invente preços ou taxas - use as tools para buscar valores reais
             `;
 
+            // Definir messages ANTES da chamada OpenAI
             const messages = [
                 { role: "system", content: systemPrompt },
                 ...history,
                 { role: "user", content: userMessage }
             ];
 
+            // Definir tools ANTES da chamada OpenAI
             const tools = [
                 {
                     type: "function",
@@ -998,6 +972,35 @@ Telefone: ${userPhone}
                     }
                 }
             ];
+
+            this.logToDb('info', 'Sending to OpenAI', { model: "gpt-4o-mini" });
+
+            // STRICT TIMEOUT: Vercel Free has 10s limit. We abort at 8s to verify.
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('OPENAI_TIMEOUT')), 8000)
+            );
+
+            let response;
+            try {
+                response = await Promise.race([
+                    this.openai.chat.completions.create({
+                        model: "gpt-4o-mini",
+                        messages: messages,
+                        tools: tools,
+                        tool_choice: "auto"
+                    }),
+                    timeoutPromise
+                ]);
+            } catch (err) {
+                if (err.message === 'OPENAI_TIMEOUT') {
+                    console.error('OpenAI Timed Out (8s limit)');
+                    this.logToDb('error', 'OpenAI Timeout', { limit: '8000ms' });
+                    await this.sendMessage(remoteJid, 'Estou um pouco lento agora. Poderia tentar novamente em instantes? 🐢', channel);
+                    return [];
+                }
+                throw err;
+            }
+            this.logToDb('info', 'OpenAI Response Received', { id: response.id });
 
             const fs = require('fs');
             const path = require('path');
