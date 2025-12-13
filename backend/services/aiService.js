@@ -380,26 +380,63 @@ class AIService {
                 product = data;
             }
 
-            // 2. If not found, try by Name (fuzzy match)
+            // 2. If not found, try by Name
             if (!product) {
-                // Sometimes AI passes the name in productId or we just need to search by name
                 const searchTerm = item.productName || item.productId;
                 log(`Looking up product by name: ${searchTerm}`);
 
                 if (typeof searchTerm === 'string') {
-                    // 1. Try exact/fuzzy match
-                    let { data } = await supabase
+                    // 1. FIRST: Try exact match (case-insensitive)
+                    let { data: exactData } = await supabase
                         .from('products')
                         .select('*')
-                        .ilike('name', `%${searchTerm}%`)
+                        .ilike('name', searchTerm)
                         .eq('is_available', true)
                         .limit(1);
 
-                    // 2. If not found, try splitting words (e.g. "Meia Calabresa" -> "Calabresa")
-                    if (!data || data.length === 0) {
-                        // Remove "Meia", "1/2", "Pizza" to find the flavor
-                        const cleanSearch = searchTerm.replace(/meia|1\/2|pizza|com|sem/gi, '').trim();
+                    if (exactData && exactData.length > 0) {
+                        product = exactData[0];
+                        log(`Product found by exact match: ${product.name} (ID: ${product.id})`);
+                    }
 
+                    // 2. If not found, try contains search
+                    if (!product) {
+                        let { data } = await supabase
+                            .from('products')
+                            .select('*')
+                            .ilike('name', `%${searchTerm}%`)
+                            .eq('is_available', true);
+
+                        // If multiple results, try to find best match
+                        if (data && data.length > 1) {
+                            // Score matches by how close they are
+                            const searchLower = searchTerm.toLowerCase();
+                            data.sort((a, b) => {
+                                const aName = a.name.toLowerCase();
+                                const bName = b.name.toLowerCase();
+                                // Prefer exact word match
+                                const aExact = aName === searchLower ? 100 : 0;
+                                const bExact = bName === searchLower ? 100 : 0;
+                                // Prefer name contains full search term
+                                const aContains = aName.includes(searchLower) ? 50 : 0;
+                                const bContains = bName.includes(searchLower) ? 50 : 0;
+                                // Prefer shorter names (more specific)
+                                const aLen = 30 - Math.min(aName.length, 30);
+                                const bLen = 30 - Math.min(bName.length, 30);
+                                return (bExact + bContains + bLen) - (aExact + aContains + aLen);
+                            });
+                            log(`Multiple matches found, sorted: ${data.map(p => p.name).join(', ')}`);
+                        }
+
+                        if (data && data.length > 0) {
+                            product = data[0];
+                            log(`Product found by contains: ${product.name} (ID: ${product.id})`);
+                        }
+                    }
+
+                    // 3. Fallback: try splitting words for pizza flavors
+                    if (!product) {
+                        const cleanSearch = searchTerm.replace(/meia|1\/2|pizza|com|sem/gi, '').trim();
                         const { data: flavorData } = await supabase
                             .from('products')
                             .select('*')
@@ -408,38 +445,14 @@ class AIService {
                             .limit(1);
 
                         if (flavorData && flavorData.length > 0) {
-                            data = flavorData;
-                            log(`Product found by flavor: ${cleanSearch}`);
-                        } else {
-                            // Fallback to word splitting
-                            const words = searchTerm.split(' ').filter(w => w.length > 3 && !['meia', 'pizza', 'com', 'sem'].includes(w.toLowerCase()));
-                            for (const word of words) {
-                                const { data: fallbackData } = await supabase
-                                    .from('products')
-                                    .select('*')
-                                    .ilike('name', `%${word}%`)
-                                    .eq('is_available', true)
-                                    .limit(1);
-
-                                if (fallbackData && fallbackData.length > 0) {
-                                    data = fallbackData;
-                                    log(`Product found by fallback word: ${word}`);
-                                    break;
-                                }
-                            }
-                        }
-
-                        if (data && data.length > 0) {
-                            product = data[0];
-                            log(`Product found by name: ${product.name} (ID: ${product.id})`);
-                        } else {
-                            log(`Product NOT found by name: ${searchTerm}`);
+                            product = flavorData[0];
+                            log(`Product found by flavor: ${product.name} (ID: ${product.id})`);
                         }
                     }
                 }
 
                 if (!product) {
-                    log(`Product not found: ${item.productId}`);
+                    log(`Product not found: ${searchTerm}`);
                     continue;
                 }
             }
