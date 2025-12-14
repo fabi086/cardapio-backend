@@ -151,11 +151,11 @@ function Home() {
                 ) : isCarouselMode ? (
                     /* Carousel Mode - Products grouped by category */
                     <div className="space-y-8">
-                        {categories.filter(cat => cat.name !== 'Todos' && groupedProducts[cat.name]?.length > 0).map((category) => (
+                        {categories.filter(cat => cat !== 'Todos' && groupedProducts[cat]?.length > 0).map((categoryName, index) => (
                             <CategoryProductCarousel
-                                key={category.id}
-                                category={category}
-                                products={groupedProducts[category.name] || []}
+                                key={categoryName}
+                                category={{ name: categoryName, id: index }}
+                                products={groupedProducts[categoryName] || []}
                                 productsPerCarousel={productsPerCarousel}
                                 onImageClick={(url, alt) => setSelectedImage({ url, alt })}
                                 onAddClick={setSelectedProduct}
