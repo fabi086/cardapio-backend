@@ -1017,6 +1017,13 @@ Telefone: ${userPhone}
 - SEMPRE pergunte sobre observações antes de finalizar
 - Se cliente informar CEP, busque o endereço automaticamente
 - NUNCA invente preços - use as tools
+
+⚠️ REGRA CRÍTICA - VERIFICAÇÃO OBRIGATÓRIA DE PRODUTOS:
+- ANTES de confirmar que um produto existe ou informar seu preço, você DEVE usar \`get_menu\` para verificar
+- NUNCA confirme a existência de um produto baseado apenas no nome que você "acha" que existe
+- Se o cliente pedir um produto específico (ex: "quero pizza de mussarela"), use \`get_menu\` com a categoria para verificar se existe
+- Se o produto NÃO estiver no cardápio retornado pelo get_menu, diga ao cliente: "Desculpe, não encontrei [produto] no nosso cardápio. Deixa eu te mostrar as opções que temos..."
+- NUNCA invente produtos ou preços - SOMENTE use informações retornadas pelas tools
             `;
 
             // Definir messages ANTES da chamada OpenAI
