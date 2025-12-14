@@ -10,6 +10,7 @@ const Dashboard = () => {
 
     const [stats, setStats] = useState({
         totalOrders: 0,
+        completedOrders: 0,
         revenue: 0,
         activeProducts: 0,
         pendingOrders: 0,
@@ -84,9 +85,13 @@ const Dashboard = () => {
             if (ordersError) throw ordersError;
 
             const totalOrders = orders.length;
-            const revenue = orders.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
-            const pendingOrders = orders.filter(o => o.status === 'pending').length;
-            const avgTicket = totalOrders > 0 ? revenue / totalOrders : 0;
+            const pendingOrders = orders.filter(o => o.status === 'pending' || o.status === 'Pendente').length;
+
+            // Revenue calculation: ONLY count delivered/completed orders
+            const completedStatuses = ['delivered', 'completed', 'Entregue'];
+            const completedOrders = orders.filter(o => completedStatuses.includes(o.status));
+            const revenue = completedOrders.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
+            const avgTicket = completedOrders.length > 0 ? revenue / completedOrders.length : 0;
 
             // 2. Fetch Active Products (Always current)
             const { count: activeProducts, error: productsError } = await supabase
@@ -103,15 +108,15 @@ const Dashboard = () => {
 
             if (customersError) console.error('Error fetching customers count:', customersError);
 
-            // 4. Fetch Top Products (for selected range)
-            const orderIds = orders.map(o => o.id);
+            // 4. Fetch Top Products (only from completed orders)
+            const completedOrderIds = completedOrders.map(o => o.id);
             let topProductsData = [];
 
-            if (orderIds.length > 0) {
+            if (completedOrderIds.length > 0) {
                 const { data: orderItems, error: itemsError } = await supabase
                     .from('order_items')
                     .select('product_name, quantity, price')
-                    .in('order_id', orderIds);
+                    .in('order_id', completedOrderIds);
 
                 if (!itemsError && orderItems) {
                     // Aggregate by product_name
@@ -138,6 +143,7 @@ const Dashboard = () => {
 
             setStats({
                 totalOrders,
+                completedOrders: completedOrders.length,
                 revenue,
                 activeProducts: activeProducts || 0,
                 pendingOrders,
@@ -147,6 +153,7 @@ const Dashboard = () => {
 
             setRecentOrders(orders.slice(0, 5));
             setTopProducts(topProductsData);
+
 
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -251,6 +258,7 @@ const Dashboard = () => {
                     </div>
                     <p className="text-stone-500 dark:text-stone-400 text-[10px] font-bold uppercase mb-0.5">Faturamento</p>
                     <h3 className="text-xl font-bold text-italian-green">{formatCurrency(stats.revenue)}</h3>
+                    <p className="text-[9px] text-stone-400 mt-1">{stats.completedOrders} entregue(s)</p>
                 </div>
 
                 <div className="bg-white dark:bg-stone-900 p-5 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800">
@@ -372,9 +380,9 @@ const Dashboard = () => {
                                 {topProducts.map((product, idx) => (
                                     <div key={product.name} className="flex items-center gap-3">
                                         <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold shrink-0 ${idx === 0 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                                idx === 1 ? 'bg-stone-200 text-stone-600 dark:bg-stone-700 dark:text-stone-300' :
-                                                    idx === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                                        'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
+                                            idx === 1 ? 'bg-stone-200 text-stone-600 dark:bg-stone-700 dark:text-stone-300' :
+                                                idx === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                                                    'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
                                             }`}>
                                             {idx + 1}
                                         </span>
