@@ -53,6 +53,8 @@ const Settings = () => {
         social_facebook: '',
         social_youtube: '',
         social_google: '',
+        display_mode: 'grid', // 'grid' or 'carousel'
+        products_per_carousel: 6,
         opening_hours_schema: {
             monday: { open: '18:00', close: '23:00', closed: false },
             tuesday: { open: '18:00', close: '23:00', closed: false },
@@ -108,6 +110,8 @@ const Settings = () => {
                     social_facebook: data.social_facebook ?? '',
                     social_youtube: data.social_youtube ?? '',
                     social_google: data.social_google ?? '',
+                    display_mode: data.display_mode ?? 'grid',
+                    products_per_carousel: data.products_per_carousel ?? 6,
                     opening_hours_schema: data.opening_hours_schema ?? prev.opening_hours_schema
                 }));
             } else {
@@ -476,6 +480,57 @@ const Settings = () => {
                                 <div>
                                     <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 mb-1">Cor Carrinho</label>
                                     <div className="flex gap-1"><input type="color" name="cart_color" value={settings.cart_color} onChange={handleChange} className="h-8 w-8 rounded cursor-pointer border-0" /><input type="text" name="cart_color" value={settings.cart_color} onChange={handleChange} className="w-full p-1 text-xs border rounded dark:bg-stone-800 dark:border-stone-600 dark:text-white" /></div>
+                                </div>
+                            </div>
+
+                            {/* Product Display Settings */}
+                            <div className="pt-4 border-t border-stone-200 dark:border-stone-700">
+                                <h3 className="text-sm font-bold text-stone-700 dark:text-stone-300 mb-4 flex items-center gap-2">
+                                    📱 Exibição de Produtos no Cardápio
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 mb-2">Modo de Exibição</label>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setSettings(prev => ({ ...prev, display_mode: 'grid' }))}
+                                                className={`flex-1 p-3 rounded-lg border-2 transition-all text-sm font-bold ${settings.display_mode === 'grid'
+                                                        ? 'border-italian-green bg-green-50 dark:bg-green-900/20 text-italian-green'
+                                                        : 'border-stone-200 dark:border-stone-700 text-stone-500 hover:border-stone-400'
+                                                    }`}
+                                            >
+                                                📦 Grid (Padrão)
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSettings(prev => ({ ...prev, display_mode: 'carousel' }))}
+                                                className={`flex-1 p-3 rounded-lg border-2 transition-all text-sm font-bold ${settings.display_mode === 'carousel'
+                                                        ? 'border-italian-green bg-green-50 dark:bg-green-900/20 text-italian-green'
+                                                        : 'border-stone-200 dark:border-stone-700 text-stone-500 hover:border-stone-400'
+                                                    }`}
+                                            >
+                                                🎠 Carrossel
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {settings.display_mode === 'carousel' && (
+                                        <div>
+                                            <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 mb-2">Produtos por Carrossel</label>
+                                            <input
+                                                type="number"
+                                                name="products_per_carousel"
+                                                min="2"
+                                                max="20"
+                                                value={settings.products_per_carousel}
+                                                onChange={handleChange}
+                                                className="w-full p-3 rounded-lg border border-stone-300 dark:border-stone-600 bg-transparent dark:text-white text-sm font-bold"
+                                            />
+                                            <p className="text-[10px] text-stone-400 mt-1">
+                                                Divide os produtos em carrosséis com este limite
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

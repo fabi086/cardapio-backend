@@ -99,26 +99,28 @@ const Header = ({ searchTerm, setSearchTerm }) => {
                             </div>
 
                             {/* Mobile Actions */}
-                            <div className="flex items-center gap-3 sm:hidden">
+                            <div className="flex items-center gap-2 sm:hidden">
                                 <button
                                     onClick={toggleTheme}
-                                    className="p-2 text-white/90 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+                                    className="flex flex-col items-center p-1.5 text-white/90 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
                                 >
-                                    {isDark ? <Sun size={20} /> : <Moon size={20} />}
+                                    {isDark ? <Sun size={18} /> : <Moon size={18} />}
                                 </button>
                                 <button
                                     onClick={() => setIsTrackingOpen(true)}
-                                    className="p-2 text-white/90 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+                                    className="flex flex-col items-center p-1.5 text-white/90 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
                                 >
-                                    <Package size={20} />
+                                    <Package size={18} />
+                                    <span className="text-[9px] mt-0.5 font-medium">Pedido</span>
                                 </button>
                                 <button
                                     onClick={() => setIsCartOpen(true)}
-                                    className="relative p-2 text-white"
+                                    className="relative flex flex-col items-center p-1.5 text-white"
                                 >
-                                    <ShoppingBag size={24} />
+                                    <ShoppingBag size={18} />
+                                    <span className="text-[9px] mt-0.5 font-medium">Carrinho</span>
                                     {cartCount > 0 && (
-                                        <span className="absolute -top-1 -right-1 bg-white text-italian-red text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-italian-red" style={{ color: settings.primary_color, borderColor: settings.primary_color }}>
+                                        <span className="absolute -top-0.5 -right-0.5 bg-white text-italian-red text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full" style={{ color: settings.primary_color }}>
                                             {cartCount}
                                         </span>
                                     )}
