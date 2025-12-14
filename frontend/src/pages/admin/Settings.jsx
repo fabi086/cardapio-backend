@@ -337,14 +337,16 @@ const Settings = () => {
                     {activeTab === 'general' && (
                         <div className="space-y-6 animate-fadeIn">
                             <h2 className="text-lg font-bold border-b border-stone-200 dark:border-stone-700 pb-2 mb-4 flex items-center gap-2 text-stone-700 dark:text-stone-200"><Building2 size={18} /> Informações da Loja</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <InputGroup label="Nome da Loja" name="restaurant_name" value={settings.restaurant_name} onChange={handleChange} placeholder="Ex: AkiraMix Pizzaria" />
                                 <InputGroup label="CNPJ" name="cnpj" value={settings.cnpj} onChange={handleChange} placeholder="00.000.000/0000-00" />
                                 <InputGroup label="WhatsApp" name="whatsapp" value={settings.whatsapp} onChange={handleChange} placeholder="5511999999999" />
-                                <InputGroup label="Endereço Completo" name="address" value={settings.address} onChange={handleChange} placeholder="Rua, Número, Bairro..." colSpan={2} />
+                                <div className="sm:col-span-2 lg:col-span-2">
+                                    <InputGroup label="Endereço Completo" name="address" value={settings.address} onChange={handleChange} placeholder="Rua, Número, Bairro..." />
+                                </div>
 
                                 {/* Dynamic Phones */}
-                                <div className="col-span-1 md:col-span-2 lg:col-span-3">
+                                <div className="col-span-1 sm:col-span-2 lg:col-span-3">
                                     <label className="block text-xs font-bold mb-2 text-stone-500 dark:text-stone-400 uppercase tracking-wider">Telefones Adicionais</label>
                                     <div className="space-y-2">
                                         {extraPhones.map((phone, index) => (
@@ -364,18 +366,18 @@ const Settings = () => {
                                 </div>
 
                                 {/* Webhook URL Display */}
-                                <div className="col-span-1 md:col-span-2 lg:col-span-3 mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                                <div className="col-span-1 sm:col-span-2 lg:col-span-3 mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
                                     <label className="block text-xs font-bold mb-2 text-blue-800 dark:text-blue-300 uppercase tracking-wider">Webhook para Agente IA</label>
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-col sm:flex-row gap-2">
                                         <input
                                             type="text"
                                             readOnly
                                             value={webhookUrl}
-                                            className="flex-1 p-2 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 text-sm font-mono"
+                                            className="flex-1 p-2 rounded border border-blue-200 dark:border-blue-700 bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 text-xs sm:text-sm font-mono overflow-x-auto"
                                         />
                                         <button
                                             onClick={() => navigator.clipboard.writeText(webhookUrl)}
-                                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs font-bold transition-colors"
+                                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-xs font-bold transition-colors shrink-0"
                                         >
                                             Copiar
                                         </button>
@@ -393,7 +395,7 @@ const Settings = () => {
                         <div className="space-y-6 animate-fadeIn">
                             <h2 className="text-lg font-bold border-b border-stone-200 dark:border-stone-700 pb-2 mb-4 flex items-center gap-2 text-stone-700 dark:text-stone-200"><Palette size={18} /> Identidade Visual</h2>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                                 {/* Logo */}
                                 <div className="space-y-2">
                                     <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase">Logo</label>
@@ -452,7 +454,7 @@ const Settings = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pt-4 border-t border-stone-200 dark:border-stone-700">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 pt-4 border-t border-stone-200 dark:border-stone-700">
                                 <div>
                                     <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 mb-1">Fonte do Sistema</label>
                                     <select name="font_family" value={settings.font_family} onChange={handleChange} className="w-full p-2 rounded border border-stone-300 dark:border-stone-600 bg-transparent dark:text-white text-sm">
@@ -499,9 +501,9 @@ const Settings = () => {
 
                             <InputGroup label="Texto Simples (Rodapé)" name="simple_hours_text" value={settings.simple_hours_text} onChange={handleChange} placeholder="Ex: Seg a Sex das 18h às 23h" />
 
-                            <div className="bg-transparent dark:bg-stone-800/20 p-4 rounded-lg border border-stone-200 dark:border-stone-700">
+                            <div className="bg-transparent dark:bg-stone-800/20 p-3 sm:p-4 rounded-lg border border-stone-200 dark:border-stone-700">
                                 <h3 className="text-xs font-bold text-stone-500 dark:text-stone-400 uppercase mb-3">Configuração Automática</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                     {Object.entries(days).map(([key, label]) => (
                                         <div key={key} className="flex items-center justify-between p-2 bg-transparent dark:bg-stone-800/50 rounded border border-stone-200 dark:border-stone-700">
                                             <label className="flex items-center gap-2 cursor-pointer">

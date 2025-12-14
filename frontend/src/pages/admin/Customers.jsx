@@ -269,10 +269,10 @@ const Customers = () => {
     };
 
     return (
-        <div className="flex h-screen bg-stone-50 dark:bg-black overflow-hidden relative">
+        <div className="flex flex-col lg:flex-row h-screen bg-stone-50 dark:bg-black overflow-hidden relative">
 
-            {/* Sidebar Filters (Responsive) */}
-            <div className="w-full lg:w-64 bg-white dark:bg-stone-900 border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-stone-800 p-4 lg:p-6 flex flex-col gap-6 shrink-0 h-auto lg:h-full overflow-y-auto">
+            {/* Sidebar Filters (Responsive - Horizontal on Mobile) */}
+            <div className="w-full lg:w-64 bg-white dark:bg-stone-900 border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-stone-800 p-4 lg:p-6 flex flex-col gap-4 lg:gap-6 shrink-0 lg:h-full overflow-y-auto">
                 <h2 className="text-xl font-display font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
                     <Filter size={20} /> Filtros
                 </h2>
@@ -379,10 +379,80 @@ const Customers = () => {
                     )}
                 </div>
 
-                {/* Table */}
+                {/* Customer List - Cards on Mobile, Table on Desktop */}
                 <div className="flex-1 overflow-y-auto px-4 md:px-8 pb-8">
-                    <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-[800px]">
+                    {/* Mobile Cards View */}
+                    <div className="md:hidden space-y-3">
+                        {loading ? (
+                            <div className="p-12 text-center text-stone-400">Carregando base de clientes...</div>
+                        ) : filteredCustomers.length === 0 ? (
+                            <div className="p-12 text-center text-stone-400">Nenhum cliente encontrado com os filtros atuais.</div>
+                        ) : (
+                            filteredCustomers.map((customer) => (
+                                <div
+                                    key={customer.id}
+                                    className={`bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 p-4 ${selectedIds.has(customer.id) ? 'ring-2 ring-italian-red' : ''}`}
+                                >
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); toggleSelection(customer.id); }}
+                                                className={`transition-colors ${selectedIds.has(customer.id) ? 'text-italian-red' : 'text-stone-300'}`}
+                                            >
+                                                {selectedIds.has(customer.id) ? <CheckSquare size={20} /> : <Square size={20} />}
+                                            </button>
+                                            <div className="w-10 h-10 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center font-bold text-stone-500 text-sm">
+                                                {customer.name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-stone-800 dark:text-stone-200">{customer.name}</div>
+                                                <div className="text-xs text-stone-400 flex items-center gap-1">
+                                                    <Phone size={10} /> {customer.phone}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {getStatusLabel(customer.status_crm)}
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-sm border-t border-stone-100 dark:border-stone-800 pt-3">
+                                        <div className="flex items-center gap-4">
+                                            <div>
+                                                <span className="text-xs text-stone-400">Pedidos:</span>
+                                                <span className="font-bold text-stone-800 dark:text-stone-200 ml-1">{customer.total_orders}</span>
+                                            </div>
+                                            <div className="text-xs text-stone-400">
+                                                Último: {customer.days_since_last === 999 ? '-' : `${customer.days_since_last}d`}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => handleEditCustomer(customer)}
+                                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-blue-50 dark:hover:bg-blue-900/20 text-stone-400 hover:text-blue-500"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteCustomer(customer.id)}
+                                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/20 text-stone-400 hover:text-red-500"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleCustomerClick(customer)}
+                                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400"
+                                            >
+                                                <MoreHorizontal size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
                             <thead className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 dark:text-stone-400 font-bold text-xs uppercase tracking-wider sticky top-0 z-10">
                                 <tr>
                                     <th className="px-6 py-4 w-12 text-center">
@@ -395,7 +465,7 @@ const Customers = () => {
                                     </th>
                                     <th className="px-6 py-4">Cliente</th>
                                     <th className="px-6 py-4">Status</th>
-                                    <th className="px-6 py-4 hidden md:table-cell">Região</th>
+                                    <th className="px-6 py-4">Região</th>
                                     <th className="px-6 py-4 text-center">Pedidos</th>
                                     <th className="px-6 py-4 text-right">Ações</th>
                                 </tr>
@@ -432,7 +502,7 @@ const Customers = () => {
                                             <td className="px-6 py-4">
                                                 {getStatusLabel(customer.status_crm)}
                                             </td>
-                                            <td className="px-6 py-4 hidden md:table-cell">
+                                            <td className="px-6 py-4">
                                                 <div className="text-sm text-stone-600 dark:text-stone-400">{customer.neighborhood}</div>
                                                 <div className="text-xs text-stone-400 truncate max-w-[150px]">{customer.city}</div>
                                             </td>
