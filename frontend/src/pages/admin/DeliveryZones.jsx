@@ -136,7 +136,7 @@ const DeliveryZones = () => {
     };
 
     const filteredZones = zones.filter(z =>
-        z.neighborhood.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (z.neighborhood && z.neighborhood.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (z.city && z.city.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
