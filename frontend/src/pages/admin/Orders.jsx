@@ -351,15 +351,16 @@ const Orders = () => {
 
     const getStatusColor = (status) => {
         const colors = {
-            'pending': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200',
-            'approved': 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200',
-            'preparing': 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200',
-            'ready': 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200',
-            'out_for_delivery': 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200',
-            'delivered': 'bg-stone-200 text-stone-800 dark:bg-stone-700 dark:text-stone-200',
-            'cancelled': 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200'
+            'pending': 'bg-yellow-100 text-yellow-900 dark:bg-yellow-500/80 dark:text-yellow-950',
+            'Pendente': 'bg-yellow-100 text-yellow-900 dark:bg-yellow-500/80 dark:text-yellow-950',
+            'approved': 'bg-blue-100 text-blue-900 dark:bg-blue-500/80 dark:text-blue-950',
+            'preparing': 'bg-orange-100 text-orange-900 dark:bg-orange-500/80 dark:text-orange-950',
+            'ready': 'bg-green-100 text-green-900 dark:bg-green-500/80 dark:text-green-950',
+            'out_for_delivery': 'bg-purple-100 text-purple-900 dark:bg-purple-500/80 dark:text-purple-950',
+            'delivered': 'bg-stone-200 text-stone-900 dark:bg-stone-500/80 dark:text-stone-950',
+            'cancelled': 'bg-red-100 text-red-900 dark:bg-red-500/80 dark:text-red-950'
         };
-        return colors[status] || 'bg-stone-100 text-stone-800 dark:bg-stone-800 dark:text-stone-200';
+        return colors[status] || 'bg-stone-100 text-stone-900 dark:bg-stone-600 dark:text-stone-100';
     };
 
     const [typeFilter, setTypeFilter] = useState('all'); // all, dine_in, delivery, pickup
@@ -538,7 +539,7 @@ const Orders = () => {
                                                 <option value="approved">Aprovado</option>
                                                 <option value="preparing">Preparando</option>
                                                 <option value="ready">Pronto</option>
-                                                <option value="out_for_delivery">Em Rota</option>
+                                                <option value="out_for_delivery">Saiu pra Entrega</option>
                                                 <option value="delivered">Entregue</option>
                                                 <option value="cancelled">Cancelado</option>
                                             </select>
@@ -644,7 +645,7 @@ const Orders = () => {
                                         <option value="approved">Aprovado</option>
                                         <option value="preparing">Preparando</option>
                                         <option value="ready">Pronto</option>
-                                        <option value="out_for_delivery">Saiu</option>
+                                        <option value="out_for_delivery">Saiu pra Entrega</option>
                                         <option value="delivered">Entregue</option>
                                         <option value="cancelled">Cancelado</option>
                                     </select>
