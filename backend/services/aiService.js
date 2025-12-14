@@ -743,35 +743,56 @@ class AIService {
     }
 
     async checkOrderStatus({ orderId }) {
-        console.log('Tool called: checkOrderStatus', { orderId });
+        const fs = require('fs');
+        const path = require('path');
+        const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
+        const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
 
-        // Try to find by UUID first
-        let { data: order, error } = await supabase
-            .from('orders')
-            .select('status, total, created_at, order_number')
-            .eq('id', orderId)
-            .single();
+        log(`Tool called: checkOrderStatus with orderId: ${orderId} (type: ${typeof orderId})`);
 
-        if (error) {
-            // Fallback: try to find by order_number (if input is a number)
-            if (!isNaN(orderId)) {
-                const { data: orderByNum, error: numError } = await supabase
+        // Converter para string e remover espaços
+        const orderIdStr = String(orderId).trim();
+        log(`OrderId after conversion: ${orderIdStr}`);
+
+        let order = null;
+
+        // 1. Try to find by UUID if it looks like one
+        if (orderIdStr.length > 20 && orderIdStr.includes('-')) {
+            log(`Trying to find by UUID: ${orderIdStr}`);
+            const { data, error } = await supabase
+                .from('orders')
+                .select('status, total, created_at, order_number')
+                .eq('id', orderIdStr)
+                .single();
+            if (data) order = data;
+            if (error) log(`UUID search error: ${error.message}`);
+        }
+
+        // 2. Try to find by order_number
+        if (!order) {
+            const orderNum = parseInt(orderIdStr, 10);
+            if (!isNaN(orderNum) && orderNum > 0) {
+                log(`Trying to find by order_number: ${orderNum}`);
+                const { data, error } = await supabase
                     .from('orders')
                     .select('status, total, created_at, order_number')
-                    .eq('order_number', orderId)
+                    .eq('order_number', orderNum)
                     .single();
-
-                if (orderByNum) {
-                    order = orderByNum;
-                    error = null;
-                }
+                if (data) order = data;
+                if (error) log(`Order number search error: ${error.message}`);
             }
         }
 
-        if (error || !order) return JSON.stringify({ error: 'Pedido não encontrado. Verifique o número.' });
+        if (!order) {
+            log(`Order not found for: ${orderIdStr}`);
+            return JSON.stringify({ error: 'Pedido não encontrado. Verifique o número.' });
+        }
+
+        log(`Order found: #${order.order_number}, status: ${order.status}`);
 
         const statusMap = {
             'pending': 'Pendente',
+            'Pendente': 'Pendente',
             'approved': 'Aprovado',
             'preparing': 'Preparando',
             'ready': 'Pronto para Entrega',
