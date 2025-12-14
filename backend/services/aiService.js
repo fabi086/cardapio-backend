@@ -1013,7 +1013,7 @@ Telefone: ${userPhone}
             if (imageBase64) {
                 userContent = [
                     { type: "text", text: userMessage || "O que você vê nesta imagem?" },
-                    { type: "image_url", url: `data:image/jpeg;base64,${imageBase64}` }
+                    { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
                 ];
             } else {
                 userContent = userMessage;
@@ -1176,22 +1176,39 @@ Telefone: ${userPhone}
                 }
             ];
 
-            this.logToDb('info', 'Sending to OpenAI', { model: "gpt-4o-mini" });
+            // Usar gpt-4o para imagens (vision), gpt-4o-mini apenas para texto
+            const modelToUse = imageBase64 ? "gpt-4o" : "gpt-4o-mini";
+            this.logToDb('info', 'Sending to OpenAI', { model: modelToUse, hasImage: !!imageBase64 });
+
+            const fs = require('fs');
+            const path = require('path');
+            const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
+            const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
+
+            log(`Sending request to OpenAI with model: ${modelToUse}...`);
 
             // STRICT TIMEOUT: Vercel Free has 10s limit. We abort at 8s to verify.
             const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('OPENAI_TIMEOUT')), 8000)
             );
 
-            let response;
+            let completion;
             try {
-                response = await Promise.race([
-                    this.openai.chat.completions.create({
-                        model: "gpt-4o-mini",
-                        messages: messages,
-                        tools: tools,
-                        tool_choice: "auto"
-                    }),
+                const requestParams = {
+                    model: modelToUse,
+                    messages: messages,
+                    max_tokens: 1024
+                };
+
+                // Apenas adicionar tools se não for requisição de imagem (vision)
+                // O gpt-4o suporta tools, mas vamos simplificar para imagens
+                if (!imageBase64) {
+                    requestParams.tools = tools;
+                    requestParams.tool_choice = "auto";
+                }
+
+                completion = await Promise.race([
+                    this.openai.chat.completions.create(requestParams),
                     timeoutPromise
                 ]);
             } catch (err) {
@@ -1203,21 +1220,8 @@ Telefone: ${userPhone}
                 }
                 throw err;
             }
-            this.logToDb('info', 'OpenAI Response Received', { id: response.id });
-
-            const fs = require('fs');
-            const path = require('path');
-            const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
-            const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
-
-            log(`Sending request to OpenAI...`);
-
-            const completion = await this.openai.chat.completions.create({
-                model: 'gpt-4o-mini',
-                messages: messages,
-                tools: tools,
-                tool_choice: "auto"
-            });
+            this.logToDb('info', 'OpenAI Response Received', { id: completion.id });
+            log(`OpenAI response received.`);
 
             const responseMessage = completion.choices[0].message;
             log(`OpenAI response received. Tool calls: ${responseMessage.tool_calls ? responseMessage.tool_calls.length : 0}`);
@@ -1268,7 +1272,7 @@ Telefone: ${userPhone}
                 }
 
                 const secondResponse = await this.openai.chat.completions.create({
-                    model: 'gpt-4o-mini',
+                    model: modelToUse,
                     messages: messages
                 });
 
