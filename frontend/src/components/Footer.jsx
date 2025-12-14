@@ -11,7 +11,7 @@ const Footer = () => {
     };
 
     return (
-        <footer className="bg-stone-900 text-stone-400 py-12 border-t border-stone-800 mt-auto" style={{ backgroundColor: settings.secondary_color }}>
+        <footer className="bg-stone-900 text-stone-400 py-12 pb-24 md:pb-12 border-t border-stone-800 mt-auto" style={{ backgroundColor: settings.secondary_color }}>
             <div className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
                     {/* Brand & Social */}

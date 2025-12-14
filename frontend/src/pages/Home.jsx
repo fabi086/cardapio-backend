@@ -16,6 +16,7 @@ import FloatingCart from '../components/FloatingCart';
 import CategoryProductCarousel from '../components/CategoryProductCarousel';
 import MobileBottomBar from '../components/MobileBottomBar';
 import OrderTrackingModal from '../components/OrderTrackingModal';
+import WhatsAppButton from '../components/WhatsAppButton';
 import { Search, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -127,6 +128,9 @@ function Home() {
             {/* Mobile Bottom Bar */}
             <MobileBottomBar onTrackingClick={() => setIsTrackingOpen(true)} />
             <OrderTrackingModal isOpen={isTrackingOpen} onClose={() => setIsTrackingOpen(false)} />
+
+            {/* WhatsApp floating button */}
+            <WhatsAppButton />
 
             <ImagePreviewModal
                 isOpen={!!selectedImage}
