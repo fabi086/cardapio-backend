@@ -80,7 +80,7 @@ const OrderNotificationListener = () => {
                             // Only show if not handled by SW (redundancy check is okay)
                             const n = new Notification('Novo Pedido Recebido! 🍔', {
                                 body: `Pedido #${payload.new.order_number}\nTotal: R$ ${parseFloat(payload.new.total).toFixed(2)}\nCliente: ${payload.new.customer_name}`,
-                                icon: '/logo.svg',
+                                icon: '/icon-512.png',
                                 tag: 'new-order',
                                 requireInteraction: true,
                                 silent: false
