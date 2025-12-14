@@ -49,7 +49,7 @@ router.post('/webhook', async (req, res) => {
                 conversation: data.message?.conversation || data.message?.extendedTextMessage?.text || data.message?.imageMessage?.caption,
                 audioMessage: data.message?.audioMessage,
                 imageMessage: data.message?.imageMessage,
-                base64: data.base64 || data.message?.audioMessage?.base64 || data.message?.imageMessage?.base64,
+                base64: data.message?.base64 || data.base64,
                 messageType: data.messageType
             });
         }
