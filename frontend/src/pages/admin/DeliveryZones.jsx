@@ -15,7 +15,7 @@ const DeliveryZones = () => {
         fee: '',
         min_order: '',
         estimated_time: '',
-        is_active: true
+        active: true
     });
 
     useEffect(() => {
@@ -62,7 +62,7 @@ const DeliveryZones = () => {
                 fee: parseFloat(formData.fee) || 0,
                 min_order: parseFloat(formData.min_order) || 0,
                 estimated_time: formData.estimated_time.trim() || null,
-                is_active: formData.is_active
+                active: formData.active
             };
 
             if (editingZone) {
@@ -100,7 +100,7 @@ const DeliveryZones = () => {
             fee: zone.fee?.toString() || '',
             min_order: zone.min_order?.toString() || '',
             estimated_time: zone.estimated_time || '',
-            is_active: zone.is_active
+            active: zone.active
         });
         setIsAddingNew(true);
     };
@@ -131,7 +131,7 @@ const DeliveryZones = () => {
             fee: '',
             min_order: '',
             estimated_time: '',
-            is_active: true
+            active: true
         });
     };
 
@@ -268,12 +268,12 @@ const DeliveryZones = () => {
                             <div className="flex items-center gap-3">
                                 <input
                                     type="checkbox"
-                                    id="is_active"
-                                    checked={formData.is_active}
-                                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                                    id="active"
+                                    checked={formData.active}
+                                    onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
                                     className="w-5 h-5 rounded"
                                 />
-                                <label htmlFor="is_active" className="text-sm font-medium text-stone-700 dark:text-stone-300">
+                                <label htmlFor="active" className="text-sm font-medium text-stone-700 dark:text-stone-300">
                                     Zona ativa (aceita entregas)
                                 </label>
                             </div>
@@ -332,9 +332,9 @@ const DeliveryZones = () => {
                             {filteredZones.map((zone) => (
                                 <div
                                     key={zone.id}
-                                    className={`bg-white dark:bg-stone-900 rounded-xl shadow-sm border overflow-hidden transition-all ${zone.is_active
-                                            ? 'border-stone-200 dark:border-stone-800'
-                                            : 'border-red-200 dark:border-red-900/50 opacity-60'
+                                    className={`bg-white dark:bg-stone-900 rounded-xl shadow-sm border overflow-hidden transition-all ${zone.active
+                                        ? 'border-stone-200 dark:border-stone-800'
+                                        : 'border-red-200 dark:border-red-900/50 opacity-60'
                                         }`}
                                 >
                                     <div className="p-4">
@@ -347,7 +347,7 @@ const DeliveryZones = () => {
                                                     <p className="text-sm text-stone-500">{zone.city}</p>
                                                 )}
                                             </div>
-                                            {!zone.is_active && (
+                                            {!zone.active && (
                                                 <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 text-xs font-bold rounded">
                                                     INATIVO
                                                 </span>
@@ -405,7 +405,7 @@ const DeliveryZones = () => {
                         <div className="mt-6 p-4 bg-stone-100 dark:bg-stone-900 rounded-xl text-center text-sm text-stone-500">
                             <span className="font-bold text-stone-700 dark:text-stone-300">{zones.length}</span> zona(s) cadastrada(s)
                             {' • '}
-                            <span className="font-bold text-green-600">{zones.filter(z => z.is_active).length}</span> ativas
+                            <span className="font-bold text-green-600">{zones.filter(z => z.active).length}</span> ativas
                             {' • '}
                             Taxa média: <span className="font-bold text-stone-700 dark:text-stone-300">
                                 {formatCurrency(zones.reduce((sum, z) => sum + (z.fee || 0), 0) / zones.length)}
