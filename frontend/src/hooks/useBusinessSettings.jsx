@@ -64,12 +64,73 @@ export const BusinessSettingsProvider = ({ children }) => {
                 }
 
                 // Update Favicon
-                if (data.favicon_url) {
+                if (data.favicon_url || data.logo_url) {
+                    const iconUrl = data.favicon_url || data.logo_url;
                     const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
-                    link.type = 'image/x-icon';
-                    link.rel = 'shortcut icon';
-                    link.href = data.favicon_url;
-                    document.getElementsByTagName('head')[0].appendChild(link);
+                    link.type = 'image/png';
+                    link.rel = 'icon';
+                    link.href = iconUrl;
+                    if (!link.parentNode) document.head.appendChild(link);
+                }
+
+                // Update Apple Touch Icon (for PWA on iOS)
+                if (data.logo_url) {
+                    const appleIcon = document.querySelector("link[rel='apple-touch-icon']") || document.createElement('link');
+                    appleIcon.rel = 'apple-touch-icon';
+                    appleIcon.href = data.logo_url;
+                    if (!appleIcon.parentNode) document.head.appendChild(appleIcon);
+                }
+
+                // Update PWA Manifest dynamically
+                if (data.logo_url || data.restaurant_name) {
+                    const manifestData = {
+                        name: data.restaurant_name || 'Cardápio Digital',
+                        short_name: data.restaurant_name || 'Cardápio',
+                        description: 'Sistema de cardápio digital e pedidos online',
+                        start_url: '/',
+                        display: 'standalone',
+                        background_color: '#ffffff',
+                        theme_color: data.primary_color || '#EA1D2C',
+                        icons: data.logo_url ? [
+                            {
+                                src: data.logo_url,
+                                sizes: '512x512',
+                                type: 'image/png',
+                                purpose: 'any maskable'
+                            },
+                            {
+                                src: data.logo_url,
+                                sizes: '192x192',
+                                type: 'image/png'
+                            },
+                            {
+                                src: data.logo_url,
+                                sizes: '96x96',
+                                type: 'image/png'
+                            }
+                        ] : [
+                            { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+                        ]
+                    };
+
+                    // Create blob URL for manifest
+                    const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+                    const manifestUrl = URL.createObjectURL(manifestBlob);
+
+                    // Update or create manifest link
+                    let manifestLink = document.querySelector("link[rel='manifest']");
+                    if (manifestLink) {
+                        // Revoke old blob URL if it was a blob
+                        if (manifestLink.href.startsWith('blob:')) {
+                            URL.revokeObjectURL(manifestLink.href);
+                        }
+                        manifestLink.href = manifestUrl;
+                    } else {
+                        manifestLink = document.createElement('link');
+                        manifestLink.rel = 'manifest';
+                        manifestLink.href = manifestUrl;
+                        document.head.appendChild(manifestLink);
+                    }
                 }
 
                 // Update Title
