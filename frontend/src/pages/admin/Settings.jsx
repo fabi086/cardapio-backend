@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Save, Building2, Phone, MapPin, Clock, DollarSign, Upload, Trash2, Plus, Palette, Map, Share2, Globe, Facebook, Youtube, Instagram, Truck, Type, X } from 'lucide-react';
+import { Save, Building2, Phone, MapPin, Clock, DollarSign, Upload, Trash2, Plus, Palette, Map, Share2, Globe, Facebook, Youtube, Instagram, Truck, Type, X, Image as ImageIcon } from 'lucide-react';
+import { optimizeImage, IMAGE_CONFIGS, formatFileSize } from '../../utils/imageOptimizer';
 
 const TabButton = ({ id, label, icon, activeTab, setActiveTab }) => {
     const Icon = icon;
@@ -162,15 +163,34 @@ const Settings = () => {
         const file = e.target.files[0];
         if (!file) return;
 
+        // Map field names to image types
+        const fieldTypeMap = {
+            'logo_url': 'logo',
+            'favicon_url': 'favicon',
+            'cover_url': 'cover',
+            'image': 'product',
+            'product_image': 'product',
+            'banner_image': 'banner',
+            'category_image': 'category'
+        };
+
+        const imageType = fieldTypeMap[field] || 'product';
+
         try {
             setSaving(true);
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${field}-${Math.random()}.${fileExt}`;
+
+            // Optimize image before upload
+            const optimized = await optimizeImage(file, imageType);
+            console.log(`Image optimized: ${formatFileSize(optimized.originalSize)} → ${formatFileSize(optimized.optimizedSize)}`);
+
+            const fileName = `${field}-${Date.now()}.jpg`;
             const filePath = `settings/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('menu-images')
-                .upload(filePath, file);
+                .upload(filePath, optimized.file, {
+                    contentType: 'image/jpeg'
+                });
 
             if (uploadError) throw uploadError;
 
@@ -179,6 +199,12 @@ const Settings = () => {
                 .getPublicUrl(filePath);
 
             setSettings(prev => ({ ...prev, [field]: publicUrl }));
+
+            // Show optimization success
+            const savings = Math.round((1 - optimized.optimizedSize / optimized.originalSize) * 100);
+            if (savings > 10) {
+                console.log(`✓ Imagem otimizada com sucesso! Reduzida ${savings}%`);
+            }
         } catch (error) {
             alert('Erro ao fazer upload: ' + error.message);
         } finally {
@@ -402,7 +428,7 @@ const Settings = () => {
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                                 {/* Logo */}
                                 <div className="space-y-2">
-                                    <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase">Logo</label>
+                                    <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase">Logo <span className="text-[10px] font-normal normal-case text-stone-400">(400x400px)</span></label>
                                     <div className="flex items-center gap-3">
                                         <div className="w-16 h-16 rounded-full bg-stone-100 dark:bg-stone-800 border dark:border-stone-700 flex items-center justify-center overflow-hidden relative group">
                                             {settings.logo_url ? <img src={settings.logo_url} className="w-full h-full object-contain" /> : <Upload size={20} className="text-stone-400" />}
@@ -420,7 +446,7 @@ const Settings = () => {
                                 </div>
                                 {/* Favicon */}
                                 <div className="space-y-2">
-                                    <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase">Favicon</label>
+                                    <label className="block text-xs font-bold text-stone-500 dark:text-stone-400 uppercase">Favicon <span className="text-[10px] font-normal normal-case text-stone-400">(192x192px)</span></label>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded bg-stone-100 dark:bg-stone-800 border dark:border-stone-700 flex items-center justify-center overflow-hidden relative group">
                                             {settings.favicon_url ? <img src={settings.favicon_url} className="w-6 h-6 object-contain" /> : <Globe size={16} className="text-stone-400" />}
@@ -496,8 +522,8 @@ const Settings = () => {
                                                 type="button"
                                                 onClick={() => setSettings(prev => ({ ...prev, display_mode: 'grid' }))}
                                                 className={`flex-1 p-3 rounded-lg border-2 transition-all text-sm font-bold ${settings.display_mode === 'grid'
-                                                        ? 'border-italian-green bg-green-50 dark:bg-green-900/20 text-italian-green'
-                                                        : 'border-stone-200 dark:border-stone-700 text-stone-500 hover:border-stone-400'
+                                                    ? 'border-italian-green bg-green-50 dark:bg-green-900/20 text-italian-green'
+                                                    : 'border-stone-200 dark:border-stone-700 text-stone-500 hover:border-stone-400'
                                                     }`}
                                             >
                                                 📦 Grid (Padrão)
@@ -506,8 +532,8 @@ const Settings = () => {
                                                 type="button"
                                                 onClick={() => setSettings(prev => ({ ...prev, display_mode: 'carousel' }))}
                                                 className={`flex-1 p-3 rounded-lg border-2 transition-all text-sm font-bold ${settings.display_mode === 'carousel'
-                                                        ? 'border-italian-green bg-green-50 dark:bg-green-900/20 text-italian-green'
-                                                        : 'border-stone-200 dark:border-stone-700 text-stone-500 hover:border-stone-400'
+                                                    ? 'border-italian-green bg-green-50 dark:bg-green-900/20 text-italian-green'
+                                                    : 'border-stone-200 dark:border-stone-700 text-stone-500 hover:border-stone-400'
                                                     }`}
                                             >
                                                 🎠 Carrossel
