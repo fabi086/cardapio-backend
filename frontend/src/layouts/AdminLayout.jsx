@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { LayoutDashboard, LogOut, Settings, UtensilsCrossed, Clock, Sun, Moon, Users, Bot, Menu, X, Tag, QrCode, ShoppingBag } from 'lucide-react';
+import { LayoutDashboard, LogOut, Settings, UtensilsCrossed, Clock, Sun, Moon, Users, Bot, Menu, X, Tag, QrCode, ShoppingBag, ChefHat } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import InstallPrompt from '../components/InstallPrompt';
 import OrderNotificationListener from '../components/OrderNotificationListener';
@@ -58,6 +58,7 @@ const AdminLayout = () => {
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard' },
         { path: '/admin/orders', label: 'Pedidos', icon: ShoppingBag },
+        { path: '/admin/kitchen', label: 'Cozinha (KDS)', icon: ChefHat },
         { path: '/admin/tables', label: 'Mesas / QR', icon: QrCode },
         { path: '/admin/customers', label: 'Clientes', icon: Users },
         { icon: UtensilsCrossed, label: 'Produtos', path: '/admin/products' },
