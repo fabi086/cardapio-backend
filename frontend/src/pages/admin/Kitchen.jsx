@@ -119,8 +119,8 @@ const Kitchen = () => {
 
     const getTimeUrgency = (createdAt) => {
         const diffMins = Math.floor((new Date() - new Date(createdAt)) / 60000);
-        if (diffMins >= 30) return 'border-red-500 border-4 animate-pulse';
-        if (diffMins >= 15) return 'border-orange-400 border-2';
+        if (diffMins >= 30) return 'border-red-500 border-4'; // Urgente - só borda, sem piscar
+        if (diffMins >= 15) return 'border-orange-400 border-2'; // Atenção
         return 'border-stone-200 dark:border-stone-700';
     };
 
@@ -247,8 +247,8 @@ const Kitchen = () => {
                     <button
                         onClick={() => setSoundEnabled(!soundEnabled)}
                         className={`p-3 rounded-xl transition-all ${soundEnabled
-                                ? 'bg-green-100 text-green-600 dark:bg-green-900/30'
-                                : 'bg-stone-100 text-stone-400 dark:bg-stone-800'
+                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30'
+                            : 'bg-stone-100 text-stone-400 dark:bg-stone-800'
                             }`}
                         title={soundEnabled ? 'Som ativado' : 'Som desativado'}
                     >
