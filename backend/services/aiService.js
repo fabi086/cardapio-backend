@@ -79,6 +79,86 @@ class AIService {
         return cleaned;
     }
 
+    // Buscar endereço pelo CEP usando ViaCEP
+    async lookupCep(cep) {
+        try {
+            const cleanCep = cep.replace(/\D/g, '');
+            if (cleanCep.length !== 8) {
+                return { error: 'CEP deve ter 8 dígitos' };
+            }
+
+            const response = await axios.get(`https://viacep.com.br/ws/${cleanCep}/json/`);
+
+            if (response.data.erro) {
+                return { error: 'CEP não encontrado' };
+            }
+
+            return {
+                cep: response.data.cep,
+                street: response.data.logradouro,
+                neighborhood: response.data.bairro,
+                city: response.data.localidade,
+                state: response.data.uf,
+                success: true
+            };
+        } catch (error) {
+            console.error('Erro ao buscar CEP:', error.message);
+            return { error: 'Erro ao buscar CEP' };
+        }
+    }
+
+    // Buscar cliente pelo telefone
+    async getCustomerByPhone(phone) {
+        try {
+            const formattedPhone = this.formatPhone(phone);
+
+            // Buscar cliente
+            const { data: customer, error } = await supabase
+                .from('customers')
+                .select('*')
+                .eq('phone', formattedPhone)
+                .single();
+
+            if (error || !customer) {
+                return JSON.stringify({
+                    found: false,
+                    message: 'Cliente não encontrado. Precisamos fazer um cadastro rápido!'
+                });
+            }
+
+            // Buscar último pedido
+            const { data: lastOrder } = await supabase
+                .from('orders')
+                .select('id, order_number, total, status, created_at, customer_address')
+                .eq('customer_phone', formattedPhone)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            return JSON.stringify({
+                found: true,
+                name: customer.name,
+                phone: customer.phone,
+                address: customer.address,
+                cep: customer.cep,
+                street: customer.street,
+                number: customer.number,
+                neighborhood: customer.neighborhood,
+                city: customer.city,
+                lastOrder: lastOrder ? {
+                    orderNumber: lastOrder.order_number,
+                    total: lastOrder.total,
+                    address: lastOrder.customer_address,
+                    date: lastOrder.created_at
+                } : null,
+                message: `Cliente encontrado: ${customer.name}`
+            });
+        } catch (error) {
+            console.error('Erro ao buscar cliente:', error.message);
+            return JSON.stringify({ error: 'Erro ao buscar cliente' });
+        }
+    }
+
     // --- TOOLS IMPLEMENTATION ---
 
     async getMenu(categoryName = null) {
@@ -886,47 +966,45 @@ Telefone: ${userPhone}
 📋 FLUXO DE ATENDIMENTO:
 
 1. **BOAS-VINDAS**
-   - Cumprimente pelo nome se souber
+   - PRIMEIRO: chame \`get_customer\` para verificar se é cliente cadastrado
+   - Se encontrado: "Olá [nome]! 😊 Que bom te ver de volta! Seu endereço ainda é [endereço]?"
+   - Se não encontrado: cumprimente normalmente e quando pedir, faça cadastro
    - Pergunte como pode ajudar
-   - Se pedirem cardápio:
-     * PRIMEIRO chame \`get_menu\` SEM categoria para ver as categorias disponíveis
-     * Pergunte qual categoria o cliente quer ver (ex: "Temos Lanches, Pizzas, Bebidas... qual te interessa?")
-     * Depois chame \`get_menu\` com a categoria escolhida
-     * Formate os produtos de forma LIMPA: um emoji + nome + preço por linha, sem descrições longas
-     * Exemplo de formatação:
-       🍔 X-Salada - R$ 22,50
-       🍔 Smash Burger - R$ 28,90
 
-2. **VERIFICAR CADASTRO**
-   - Use \`register_customer\` para buscar dados salvos
-   - Se já existe, confirme: "Encontrei seu cadastro! Endereço ainda é [endereço]?"
-   
+2. **CARDÁPIO**
+   - Se pedirem cardápio, PRIMEIRO pergunte a categoria
+   - Use \`get_menu\` para listar categorias e depois produtos
+   - Se produto tem VARIAÇÕES (sucos, tamanhos), LISTE as opções antes de adicionar
+     * Ex: "Temos suco de laranja, maracujá e limão. Qual você prefere?"
+   - Formate: emoji + nome + preço (limpo e curto)
+
 3. **MONTAR PEDIDO**
    - Anote os itens com atenção
-   - Sugira adicionais naturalmente ("Quer adicionar uma bebida gelada?")
-   - Confirme a quantidade
+   - SEMPRE pergunte: "Alguma observação no pedido? (sem cebola, borda recheada, etc)"
+   - Sugira adicionais naturalmente
+   - Confirme cada item antes de prosseguir
 
-4. **ENTREGA OU RETIRADA**
-   - "Vai querer entrega ou você vem buscar aqui?"
-   - Se entrega: confirme/peça endereço e CEP
-   - Se retirada: "Ótimo! Fica pronto rapidinho 😊"
+4. **ENDEREÇO E CEP**
+   - Se cliente informar CEP, use \`lookup_cep\` para buscar o endereço
+   - Confirme: "Achei! É na [rua], [bairro]? Qual o número?"
+   - Use \`register_customer\` para salvar/atualizar dados
 
 5. **PAGAMENTO**
    - "Como prefere pagar? PIX, cartão ou dinheiro?"
    - Se dinheiro: "Precisa de troco pra quanto?"
 
 6. **FINALIZAR**
-   - Use \`create_order\` com todos os dados
-   - O frete é calculado automaticamente pelo CEP
+   - Use \`create_order\` com todos os dados incluindo observações
    - Mostre resumo completo com valores
-   - Link de acompanhamento: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/order/[ID]
-   - "Seu pedido já tá na cozinha! 🍕"
+   - IMPORTANTE: Envie o link de acompanhamento ASSIM (para ser clicável):
+     https://cardapio-backend.vercel.app/order/[ID_DO_PEDIDO]
+   - NÃO use formato markdown [texto](url) - apenas cole a URL direta
 
-💡 DICAS EXTRAS:
-- Se perguntar sobre ingredientes, explique com carinho
-- Se pedir promoção, diga que pode verificar cupons disponíveis
-- Se reclamar de algo, seja empático e ofereça ajuda
-- NUNCA invente preços ou taxas - use as tools para buscar valores reais
+💡 REGRAS IMPORTANTES:
+- Se produto tem variações, PERGUNTE qual antes de adicionar
+- SEMPRE pergunte sobre observações antes de finalizar
+- Se cliente informar CEP, busque o endereço automaticamente
+- NUNCA invente preços - use as tools
             `;
 
             // Definir messages ANTES da chamada OpenAI
@@ -1067,6 +1145,34 @@ Telefone: ${userPhone}
                             required: ["orderId"]
                         }
                     }
+                },
+                {
+                    type: "function",
+                    function: {
+                        name: "lookup_cep",
+                        description: "Busca endereço completo pelo CEP. Use quando cliente informar o CEP para preencher rua, bairro, cidade automaticamente.",
+                        parameters: {
+                            type: "object",
+                            properties: {
+                                cep: { type: "string", description: "CEP para buscar (8 dígitos)" }
+                            },
+                            required: ["cep"]
+                        }
+                    }
+                },
+                {
+                    type: "function",
+                    function: {
+                        name: "get_customer",
+                        description: "Busca dados do cliente pelo telefone. Use no INÍCIO da conversa para reconhecer cliente e mostrar endereço salvo.",
+                        parameters: {
+                            type: "object",
+                            properties: {
+                                phone: { type: "string", description: "Telefone do cliente" }
+                            },
+                            required: ["phone"]
+                        }
+                    }
                 }
             ];
 
@@ -1147,6 +1253,10 @@ Telefone: ${userPhone}
                         } catch (e) { }
                     } else if (functionName === 'check_order_status') {
                         functionResult = await this.checkOrderStatus(functionArgs);
+                    } else if (functionName === 'lookup_cep') {
+                        functionResult = JSON.stringify(await this.lookupCep(functionArgs.cep));
+                    } else if (functionName === 'get_customer') {
+                        functionResult = await this.getCustomerByPhone(functionArgs.phone || userPhone);
                     }
 
                     messages.push({
