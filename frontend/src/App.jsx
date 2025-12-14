@@ -20,6 +20,7 @@ import Settings from './pages/admin/Settings';
 import AIAgent from './pages/admin/AIAgent';
 import Kitchen from './pages/admin/Kitchen';
 import Reports from './pages/admin/Reports';
+import DeliveryZones from './pages/admin/DeliveryZones';
 import FloatingCart from './components/FloatingCart';
 import TableBanner from './components/TableBanner';
 
@@ -54,6 +55,7 @@ function App() {
                   <Route path="coupons" element={<Coupons />} />
                   <Route path="kitchen" element={<Kitchen />} />
                   <Route path="reports" element={<Reports />} />
+                  <Route path="delivery-zones" element={<DeliveryZones />} />
                   <Route path="ai-agent" element={<AIAgent />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
