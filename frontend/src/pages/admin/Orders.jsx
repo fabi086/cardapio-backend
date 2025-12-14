@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import { supabase } from '../../lib/supabase';
-import { Clock, CheckCircle, ChefHat, Truck, Printer, XCircle, ChevronDown, ChevronUp, Grid, List, Filter, Search, Pencil, MapPin } from 'lucide-react';
+import { Clock, CheckCircle, ChefHat, Truck, Printer, XCircle, ChevronDown, ChevronUp, Grid, List, Filter, Search, Pencil, MapPin, Trash2 } from 'lucide-react';
 
 const Orders = () => {
     const [orders, setOrders] = useState([]);
@@ -307,6 +307,38 @@ const Orders = () => {
         printWindow.document.close();
     };
 
+    const handleDeleteOrder = async (order) => {
+        const confirmMessage = `Tem certeza que deseja EXCLUIR o pedido #${order.order_number || order.id.slice(0, 8)}?\n\nCliente: ${order.customer_name}\nTotal: R$ ${order.total?.toFixed(2)}\n\nEsta ação NÃO pode ser desfeita!`;
+
+        if (!window.confirm(confirmMessage)) return;
+
+        try {
+            // First delete order items
+            const { error: itemsError } = await supabase
+                .from('order_items')
+                .delete()
+                .eq('order_id', order.id);
+
+            if (itemsError) throw itemsError;
+
+            // Then delete the order
+            const { error: orderError } = await supabase
+                .from('orders')
+                .delete()
+                .eq('id', order.id);
+
+            if (orderError) throw orderError;
+
+            // Update local state
+            setOrders(orders.filter(o => o.id !== order.id));
+            alert('Pedido excluído com sucesso!');
+
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            alert('Erro ao excluir pedido: ' + error.message);
+        }
+    };
+
     const getPaymentMethodLabel = (method) => {
         const labels = {
             'pix': 'PIX',
@@ -538,6 +570,9 @@ const Orders = () => {
                                                 <button onClick={() => setEditingOrder({ ...order, delivery_fee: order.delivery_fee || 0 })} className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors" title="Editar">
                                                     <Pencil size={18} />
                                                 </button>
+                                                <button onClick={() => handleDeleteOrder(order)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
+                                                    <Trash2 size={18} />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -616,8 +651,11 @@ const Orders = () => {
                                     <button onClick={() => handlePrint(order)} className="p-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-stone-500 hover:text-stone-800 shadow-sm">
                                         <Printer size={16} />
                                     </button>
-                                    <button onClick={() => setEditingOrder({ ...order, delivery_fee: order.delivery_fee || 0 })} className="p-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 rounded-lg text-blue-600 shadow-sm">
+                                    <button onClick={() => setEditingOrder({ ...order, delivery_fee: order.delivery_fee || 0 })} className="p-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 rounded-lg text-blue-600 shadow-sm" title="Editar">
                                         <Pencil size={16} />
+                                    </button>
+                                    <button onClick={() => handleDeleteOrder(order)} className="p-2 bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800 rounded-lg text-red-500 shadow-sm" title="Excluir">
+                                        <Trash2 size={16} />
                                     </button>
                                 </div>
                             </div>
