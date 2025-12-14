@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Clock, ChefHat, CheckCircle, AlertCircle, Volume2, VolumeX, RefreshCw, Maximize2, Timer } from 'lucide-react';
+import { Clock, ChefHat, CheckCircle, AlertCircle, Volume2, VolumeX, RefreshCw, Maximize2, Timer, Zap } from 'lucide-react';
 
 const Kitchen = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('active'); // active, all
     const [soundEnabled, setSoundEnabled] = useState(true);
+    const [blinkEnabled, setBlinkEnabled] = useState(false); // Piscar desativado por padrão
     const [isFullscreen, setIsFullscreen] = useState(false);
     const audioRef = useRef(null);
     const containerRef = useRef(null);
@@ -119,7 +120,7 @@ const Kitchen = () => {
 
     const getTimeUrgency = (createdAt) => {
         const diffMins = Math.floor((new Date() - new Date(createdAt)) / 60000);
-        if (diffMins >= 30) return 'border-red-500 border-4'; // Urgente - só borda, sem piscar
+        if (diffMins >= 30) return `border-red-500 border-4 ${blinkEnabled ? 'animate-pulse' : ''}`; // Urgente
         if (diffMins >= 15) return 'border-orange-400 border-2'; // Atenção
         return 'border-stone-200 dark:border-stone-700';
     };
@@ -253,6 +254,18 @@ const Kitchen = () => {
                         title={soundEnabled ? 'Som ativado' : 'Som desativado'}
                     >
                         {soundEnabled ? <Volume2 size={24} /> : <VolumeX size={24} />}
+                    </button>
+
+                    {/* Blink Toggle */}
+                    <button
+                        onClick={() => setBlinkEnabled(!blinkEnabled)}
+                        className={`p-3 rounded-xl transition-all ${blinkEnabled
+                            ? 'bg-red-100 text-red-600 dark:bg-red-900/30'
+                            : 'bg-stone-100 text-stone-400 dark:bg-stone-800'
+                            }`}
+                        title={blinkEnabled ? 'Piscar atrasados: LIGADO' : 'Piscar atrasados: DESLIGADO'}
+                    >
+                        <Zap size={24} />
                     </button>
 
                     {/* Refresh */}
