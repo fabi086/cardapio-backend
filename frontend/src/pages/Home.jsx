@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useBusinessSettings } from '../hooks/useBusinessSettings';
 import Header from '../components/Header';
 import CategoryTabs from '../components/CategoryTabs';
@@ -14,6 +14,8 @@ import ImagePreviewModal from '../components/ImagePreviewModal';
 import ProductDetailsModal from '../components/ProductDetailsModal';
 import FloatingCart from '../components/FloatingCart';
 import CategoryProductCarousel from '../components/CategoryProductCarousel';
+import MobileBottomBar from '../components/MobileBottomBar';
+import OrderTrackingModal from '../components/OrderTrackingModal';
 import { Search, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,6 +26,7 @@ function Home() {
     const [menuItems, setMenuItems] = useState([]);
     const [allItems, setAllItems] = useState([]); // For carousel mode
     const [loading, setLoading] = useState(true);
+    const [isTrackingOpen, setIsTrackingOpen] = useState(false);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedImage, setSelectedImage] = useState(null);
@@ -31,10 +34,32 @@ function Home() {
     const [orderIdSearch, setOrderIdSearch] = useState('');
     const navigate = useNavigate();
 
+    // Refs for scroll-to-category
+    const categoryRefs = useRef({});
+
     const handleOrderSearch = (e) => {
         e.preventDefault();
         if (orderIdSearch.trim()) {
             navigate(`/order/${orderIdSearch.trim()}`);
+        }
+    };
+
+    // Handle category click - scroll to section in carousel mode
+    const handleCategoryClick = (categoryName) => {
+        setActiveCategory(categoryName);
+
+        if (isCarouselMode && categoryName !== 'Todos') {
+            const element = categoryRefs.current[categoryName];
+            if (element) {
+                const headerOffset = 80;
+                const elementPosition = element.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            }
         }
     };
 
@@ -94,7 +119,14 @@ function Home() {
         <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-800 dark:text-stone-100 font-sans transition-colors duration-300 flex flex-col">
             <Header />
             <CartModal />
-            <FloatingCart />
+            {/* FloatingCart hidden on mobile, shown on desktop */}
+            <div className="hidden md:block">
+                <FloatingCart />
+            </div>
+
+            {/* Mobile Bottom Bar */}
+            <MobileBottomBar onTrackingClick={() => setIsTrackingOpen(true)} />
+            <OrderTrackingModal isOpen={isTrackingOpen} onClose={() => setIsTrackingOpen(false)} />
 
             <ImagePreviewModal
                 isOpen={!!selectedImage}
@@ -111,21 +143,19 @@ function Home() {
                 />
             )}
 
-            <main className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
+            <main className="max-w-[1100px] mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full pb-24 md:pb-8">
 
                 {/* 1. Banner */}
                 <BannerCarousel />
 
-                {/* 2. Categories - Shown in grid mode only */}
-                {!isCarouselMode && (
-                    <div className="mb-6">
-                        <CategoryTabs
-                            categories={categories}
-                            activeCategory={activeCategory}
-                            onSelectCategory={setActiveCategory}
-                        />
-                    </div>
-                )}
+                {/* 2. Categories - Always shown, with scroll-to functionality in carousel mode */}
+                <div className="mb-4">
+                    <CategoryTabs
+                        categories={categories}
+                        activeCategory={activeCategory}
+                        onSelectCategory={handleCategoryClick}
+                    />
+                </div>
 
                 {/* 3. Search Bar */}
                 <SearchBar
@@ -138,8 +168,8 @@ function Home() {
                 {/* 4. Filter Tags */}
                 <FilterTags />
 
-                <div className="mb-8 text-center">
-                    <h1 className="text-3xl font-display text-italian-red mb-2" style={{ color: settings.primary_color }}>
+                <div className="mb-6 text-center">
+                    <h1 className="text-2xl md:text-3xl font-display text-italian-red mb-2" style={{ color: settings.primary_color }}>
                         {isCarouselMode ? 'Nosso Cardápio' : 'Destaques do Menu'}
                     </h1>
                 </div>
@@ -152,14 +182,19 @@ function Home() {
                     /* Carousel Mode - Products grouped by category */
                     <div className="space-y-8">
                         {categories.filter(cat => cat !== 'Todos' && groupedProducts[cat]?.length > 0).map((categoryName, index) => (
-                            <CategoryProductCarousel
+                            <div
                                 key={categoryName}
-                                category={{ name: categoryName, id: index }}
-                                products={groupedProducts[categoryName] || []}
-                                productsPerCarousel={productsPerCarousel}
-                                onImageClick={(url, alt) => setSelectedImage({ url, alt })}
-                                onAddClick={setSelectedProduct}
-                            />
+                                ref={el => categoryRefs.current[categoryName] = el}
+                                id={`category-${categoryName.toLowerCase().replace(/\s+/g, '-')}`}
+                            >
+                                <CategoryProductCarousel
+                                    category={{ name: categoryName, id: index }}
+                                    products={groupedProducts[categoryName] || []}
+                                    productsPerCarousel={productsPerCarousel}
+                                    onImageClick={(url, alt) => setSelectedImage({ url, alt })}
+                                    onAddClick={setSelectedProduct}
+                                />
+                            </div>
                         ))}
                     </div>
                 ) : (
@@ -183,4 +218,5 @@ function Home() {
 }
 
 export default Home;
+
 

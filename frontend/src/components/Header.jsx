@@ -98,32 +98,13 @@ const Header = ({ searchTerm, setSearchTerm }) => {
                                 </div>
                             </div>
 
-                            {/* Mobile Actions */}
+                            {/* Mobile Actions - Only theme toggle, cart/tracking moved to bottom bar */}
                             <div className="flex items-center gap-2 sm:hidden">
                                 <button
                                     onClick={toggleTheme}
-                                    className="flex flex-col items-center p-1.5 text-white/90 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                                    className="p-2 text-white/90 hover:text-white rounded-full hover:bg-white/10 transition-colors"
                                 >
-                                    {isDark ? <Sun size={18} /> : <Moon size={18} />}
-                                </button>
-                                <button
-                                    onClick={() => setIsTrackingOpen(true)}
-                                    className="flex flex-col items-center p-1.5 text-white/90 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
-                                >
-                                    <Package size={18} />
-                                    <span className="text-[9px] mt-0.5 font-medium">Pedido</span>
-                                </button>
-                                <button
-                                    onClick={() => setIsCartOpen(true)}
-                                    className="relative flex flex-col items-center p-1.5 text-white"
-                                >
-                                    <ShoppingBag size={18} />
-                                    <span className="text-[9px] mt-0.5 font-medium">Carrinho</span>
-                                    {cartCount > 0 && (
-                                        <span className="absolute -top-0.5 -right-0.5 bg-white text-italian-red text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full" style={{ color: settings.primary_color }}>
-                                            {cartCount}
-                                        </span>
-                                    )}
+                                    {isDark ? <Sun size={20} /> : <Moon size={20} />}
                                 </button>
                             </div>
                         </div>
