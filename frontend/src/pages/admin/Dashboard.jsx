@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { ShoppingBag, DollarSign, Package, Clock, Calendar, TrendingUp, ArrowRight, Filter } from 'lucide-react';
+import { ShoppingBag, DollarSign, Package, Clock, Calendar, TrendingUp, ArrowRight, Filter, Users, Receipt, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -12,9 +12,12 @@ const Dashboard = () => {
         totalOrders: 0,
         revenue: 0,
         activeProducts: 0,
-        pendingOrders: 0
+        pendingOrders: 0,
+        avgTicket: 0,
+        totalCustomers: 0
     });
     const [recentOrders, setRecentOrders] = useState([]);
+    const [topProducts, setTopProducts] = useState([]);
 
     useEffect(() => {
         fetchDashboardData();
@@ -51,13 +54,11 @@ const Dashboard = () => {
             const today = new Date();
 
             if (dateRange === 'custom') {
-                // customDate is YYYY-MM-DD
                 startDate = new Date(`${customDate}T00:00:00`);
                 endDate = new Date(`${customDate}T23:59:59.999`);
             } else {
                 const bounds = getLocalDayBounds(today);
                 endDate = bounds.end;
-
                 startDate = bounds.start;
 
                 if (dateRange === '7d') {
@@ -85,6 +86,7 @@ const Dashboard = () => {
             const totalOrders = orders.length;
             const revenue = orders.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
             const pendingOrders = orders.filter(o => o.status === 'pending').length;
+            const avgTicket = totalOrders > 0 ? revenue / totalOrders : 0;
 
             // 2. Fetch Active Products (Always current)
             const { count: activeProducts, error: productsError } = await supabase
@@ -94,14 +96,57 @@ const Dashboard = () => {
 
             if (productsError) throw productsError;
 
+            // 3. Fetch Total Customers (Always current)
+            const { count: totalCustomers, error: customersError } = await supabase
+                .from('customers')
+                .select('*', { count: 'exact', head: true });
+
+            if (customersError) console.error('Error fetching customers count:', customersError);
+
+            // 4. Fetch Top Products (for selected range)
+            const orderIds = orders.map(o => o.id);
+            let topProductsData = [];
+
+            if (orderIds.length > 0) {
+                const { data: orderItems, error: itemsError } = await supabase
+                    .from('order_items')
+                    .select('product_name, quantity, price')
+                    .in('order_id', orderIds);
+
+                if (!itemsError && orderItems) {
+                    // Aggregate by product_name
+                    const productMap = {};
+                    orderItems.forEach(item => {
+                        if (productMap[item.product_name]) {
+                            productMap[item.product_name].quantity += item.quantity;
+                            productMap[item.product_name].revenue += item.price * item.quantity;
+                        } else {
+                            productMap[item.product_name] = {
+                                name: item.product_name,
+                                quantity: item.quantity,
+                                revenue: item.price * item.quantity
+                            };
+                        }
+                    });
+
+                    // Sort by quantity and take top 5
+                    topProductsData = Object.values(productMap)
+                        .sort((a, b) => b.quantity - a.quantity)
+                        .slice(0, 5);
+                }
+            }
+
             setStats({
                 totalOrders,
                 revenue,
                 activeProducts: activeProducts || 0,
-                pendingOrders
+                pendingOrders,
+                avgTicket,
+                totalCustomers: totalCustomers || 0
             });
 
             setRecentOrders(orders.slice(0, 5));
+            setTopProducts(topProductsData);
 
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -196,97 +241,160 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white dark:bg-stone-900 p-6 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 flex items-center justify-between">
-                    <div>
-                        <p className="text-stone-500 dark:text-stone-400 text-xs font-bold uppercase mb-1">Faturamento</p>
-                        <h3 className="text-2xl font-bold text-italian-green">{formatCurrency(stats.revenue)}</h3>
+            {/* Stats Grid - First Row */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+                <div className="bg-white dark:bg-stone-900 p-5 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg text-italian-green">
+                            <DollarSign size={20} />
+                        </div>
                     </div>
-                    <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-italian-green">
-                        <DollarSign size={24} />
-                    </div>
+                    <p className="text-stone-500 dark:text-stone-400 text-[10px] font-bold uppercase mb-0.5">Faturamento</p>
+                    <h3 className="text-xl font-bold text-italian-green">{formatCurrency(stats.revenue)}</h3>
                 </div>
 
-                <div className="bg-white dark:bg-stone-900 p-6 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 flex items-center justify-between">
-                    <div>
-                        <p className="text-stone-500 dark:text-stone-400 text-xs font-bold uppercase mb-1">Pendentes</p>
-                        <h3 className="text-2xl font-bold text-orange-500">{stats.pendingOrders}</h3>
+                <div className="bg-white dark:bg-stone-900 p-5 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-500">
+                            <Receipt size={20} />
+                        </div>
                     </div>
-                    <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-orange-500">
-                        <Clock size={24} />
-                    </div>
+                    <p className="text-stone-500 dark:text-stone-400 text-[10px] font-bold uppercase mb-0.5">Ticket Médio</p>
+                    <h3 className="text-xl font-bold text-purple-600 dark:text-purple-400">{formatCurrency(stats.avgTicket)}</h3>
                 </div>
 
-                <div className="bg-white dark:bg-stone-900 p-6 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 flex items-center justify-between">
-                    <div>
-                        <p className="text-stone-500 dark:text-stone-400 text-xs font-bold uppercase mb-1">Total Pedidos</p>
-                        <h3 className="text-2xl font-bold text-stone-800 dark:text-stone-100">{stats.totalOrders}</h3>
+                <div className="bg-white dark:bg-stone-900 p-5 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-orange-500">
+                            <Clock size={20} />
+                        </div>
                     </div>
-                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-500">
-                        <ShoppingBag size={24} />
-                    </div>
+                    <p className="text-stone-500 dark:text-stone-400 text-[10px] font-bold uppercase mb-0.5">Pendentes</p>
+                    <h3 className="text-xl font-bold text-orange-500">{stats.pendingOrders}</h3>
                 </div>
 
-                <div className="bg-white dark:bg-stone-900 p-6 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 flex items-center justify-between">
-                    <div>
-                        <p className="text-stone-500 dark:text-stone-400 text-xs font-bold uppercase mb-1">Pratos Ativos</p>
-                        <h3 className="text-2xl font-bold text-italian-red">{stats.activeProducts}</h3>
+                <div className="bg-white dark:bg-stone-900 p-5 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-500">
+                            <ShoppingBag size={20} />
+                        </div>
                     </div>
-                    <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-italian-red">
-                        <Package size={24} />
+                    <p className="text-stone-500 dark:text-stone-400 text-[10px] font-bold uppercase mb-0.5">Total Pedidos</p>
+                    <h3 className="text-xl font-bold text-stone-800 dark:text-stone-100">{stats.totalOrders}</h3>
+                </div>
+
+                <div className="bg-white dark:bg-stone-900 p-5 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg text-italian-red">
+                            <Package size={20} />
+                        </div>
                     </div>
+                    <p className="text-stone-500 dark:text-stone-400 text-[10px] font-bold uppercase mb-0.5">Pratos Ativos</p>
+                    <h3 className="text-xl font-bold text-italian-red">{stats.activeProducts}</h3>
+                </div>
+
+                <div className="bg-white dark:bg-stone-900 p-5 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="p-2 bg-teal-50 dark:bg-teal-900/20 rounded-lg text-teal-500">
+                            <Users size={20} />
+                        </div>
+                    </div>
+                    <p className="text-stone-500 dark:text-stone-400 text-[10px] font-bold uppercase mb-0.5">Clientes</p>
+                    <h3 className="text-xl font-bold text-teal-600 dark:text-teal-400">{stats.totalCustomers}</h3>
                 </div>
             </div>
 
-            {/* Recent Orders */}
-            <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-hidden">
-                <div className="p-6 border-b border-stone-200 dark:border-stone-800 flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
-                        <TrendingUp size={20} className="text-italian-red" />
-                        Pedidos Recentes
-                    </h2>
-                    <Link to="/admin/orders" className="text-sm text-italian-red font-bold hover:underline flex items-center gap-1">
-                        Ver Todos <ArrowRight size={16} />
-                    </Link>
-                </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 dark:text-stone-400 text-xs uppercase">
-                                <th className="p-4 font-bold">ID</th>
-                                <th className="p-4 font-bold">Cliente</th>
-                                <th className="p-4 font-bold">Data</th>
-                                <th className="p-4 font-bold">Status</th>
-                                <th className="p-4 font-bold text-right">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                            {recentOrders.length > 0 ? (
-                                recentOrders.map((order) => (
-                                    <tr key={order.id} className="hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors">
-                                        <td className="p-4 text-sm font-mono text-stone-600 dark:text-stone-400">
-                                            #{order.order_number ? order.order_number : order.id.toString().slice(0, 8)}
-                                        </td>
-                                        <td className="p-4 text-sm font-medium text-stone-800 dark:text-stone-200">{order.customer_name}</td>
-                                        <td className="p-4 text-sm text-stone-600 dark:text-stone-400">{formatDate(order.created_at)}</td>
-                                        <td className="p-4">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
-                                                {getStatusLabel(order.status)}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 text-sm font-bold text-right text-stone-800 dark:text-stone-200">{formatCurrency(order.total)}</td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="5" className="p-8 text-center text-stone-500 dark:text-stone-400">
-                                        Nenhum pedido encontrado neste período.
-                                    </td>
+            {/* Two Column Layout: Recent Orders + Top Products */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Recent Orders */}
+                <div className="lg:col-span-2 bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-hidden">
+                    <div className="p-5 border-b border-stone-200 dark:border-stone-800 flex justify-between items-center">
+                        <h2 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
+                            <TrendingUp size={20} className="text-italian-red" />
+                            Pedidos Recentes
+                        </h2>
+                        <Link to="/admin/orders" className="text-sm text-italian-red font-bold hover:underline flex items-center gap-1">
+                            Ver Todos <ArrowRight size={16} />
+                        </Link>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 dark:text-stone-400 text-xs uppercase">
+                                    <th className="p-4 font-bold">ID</th>
+                                    <th className="p-4 font-bold">Cliente</th>
+                                    <th className="p-4 font-bold">Data</th>
+                                    <th className="p-4 font-bold">Status</th>
+                                    <th className="p-4 font-bold text-right">Total</th>
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                                {recentOrders.length > 0 ? (
+                                    recentOrders.map((order) => (
+                                        <tr key={order.id} className="hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors">
+                                            <td className="p-4 text-sm font-mono text-stone-600 dark:text-stone-400">
+                                                #{order.order_number ? order.order_number : order.id.toString().slice(0, 8)}
+                                            </td>
+                                            <td className="p-4 text-sm font-medium text-stone-800 dark:text-stone-200">{order.customer_name}</td>
+                                            <td className="p-4 text-sm text-stone-600 dark:text-stone-400">{formatDate(order.created_at)}</td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
+                                                    {getStatusLabel(order.status)}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-sm font-bold text-right text-stone-800 dark:text-stone-200">{formatCurrency(order.total)}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="5" className="p-8 text-center text-stone-500 dark:text-stone-400">
+                                            Nenhum pedido encontrado neste período.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Top Products */}
+                <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-hidden">
+                    <div className="p-5 border-b border-stone-200 dark:border-stone-800">
+                        <h2 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
+                            <Award size={20} className="text-yellow-500" />
+                            Mais Vendidos
+                        </h2>
+                        <p className="text-xs text-stone-400 mt-1">No período selecionado</p>
+                    </div>
+                    <div className="p-4">
+                        {topProducts.length > 0 ? (
+                            <div className="space-y-3">
+                                {topProducts.map((product, idx) => (
+                                    <div key={product.name} className="flex items-center gap-3">
+                                        <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold shrink-0 ${idx === 0 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                                idx === 1 ? 'bg-stone-200 text-stone-600 dark:bg-stone-700 dark:text-stone-300' :
+                                                    idx === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                                                        'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
+                                            }`}>
+                                            {idx + 1}
+                                        </span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-medium text-stone-800 dark:text-stone-200 text-sm truncate">{product.name}</p>
+                                            <p className="text-xs text-stone-400">{formatCurrency(product.revenue)}</p>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <span className="text-sm font-bold text-italian-green">{product.quantity}x</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center text-stone-400 py-8">
+                                <Package className="mx-auto mb-2" size={32} />
+                                <p className="text-sm">Nenhum produto vendido neste período</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

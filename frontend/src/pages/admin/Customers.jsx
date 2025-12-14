@@ -153,9 +153,29 @@ const Customers = () => {
     };
 
     const handleDeleteCustomer = async (id) => {
-        if (!window.confirm('Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.')) return;
+        // Count linked orders first
+        const { count } = await supabase
+            .from('orders')
+            .select('*', { count: 'exact', head: true })
+            .eq('customer_id', id);
+
+        const confirmMsg = count > 0
+            ? `Este cliente tem ${count} pedido(s) vinculado(s). Os pedidos serão desvinculados (não excluídos). Continuar com a exclusão?`
+            : 'Tem certeza que deseja excluir este cliente?';
+
+        if (!window.confirm(confirmMsg)) return;
 
         try {
+            // First, unlink all orders (set customer_id to null)
+            if (count > 0) {
+                const { error: unlinkError } = await supabase
+                    .from('orders')
+                    .update({ customer_id: null })
+                    .eq('customer_id', id);
+                if (unlinkError) throw unlinkError;
+            }
+
+            // Then delete the customer
             const { error } = await supabase
                 .from('customers')
                 .delete()
@@ -164,11 +184,10 @@ const Customers = () => {
             if (error) throw error;
 
             fetchCustomers();
-            // If deleted customer was selected, unselect
             if (selectedCustomer && selectedCustomer.id === id) setSelectedCustomer(null);
         } catch (error) {
             console.error('Error deleting customer:', error);
-            alert('Erro ao excluir cliente. Verifique se existem pedidos vinculados.');
+            alert('Erro ao excluir cliente: ' + error.message);
         }
     };
 
@@ -253,8 +272,8 @@ const Customers = () => {
     };
 
     const handleCustomerClick = (customer) => {
-        setSelectedCustomer(customer);
-        fetchCustomerOrders(customer.id);
+        // Open edit modal instead of read-only details
+        handleEditCustomer(customer);
     };
 
     const formatDate = (date) => date ? new Date(date).toLocaleDateString('pt-BR') : '-';
@@ -440,6 +459,7 @@ const Customers = () => {
                                             <button
                                                 onClick={() => handleCustomerClick(customer)}
                                                 className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400"
+                                                title="Ver/Editar"
                                             >
                                                 <MoreHorizontal size={18} />
                                             </button>
