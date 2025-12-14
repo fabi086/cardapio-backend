@@ -445,10 +445,12 @@ class AIService {
         // 3. Calcular total
         let subtotal = 0;
         const orderItemsData = [];
+        const notFoundProducts = []; // Rastrear produtos não encontrados
 
         for (const item of items) {
             log(`Processing item: ${JSON.stringify(item)}`);
             let product = null;
+            const searchTerm = item.productName || item.productId;
 
             // 1. Try to find by ID if it looks like a UUID
             if (item.productId && typeof item.productId === 'string' && item.productId.length > 20) {
@@ -462,7 +464,6 @@ class AIService {
 
             // 2. If not found, try by Name
             if (!product) {
-                const searchTerm = item.productName || item.productId;
                 log(`Looking up product by name: ${searchTerm}`);
 
                 if (typeof searchTerm === 'string') {
@@ -533,6 +534,7 @@ class AIService {
 
                 if (!product) {
                     log(`Product not found: ${searchTerm}`);
+                    notFoundProducts.push(searchTerm || 'Item desconhecido');
                     continue;
                 }
             }
@@ -547,6 +549,16 @@ class AIService {
                 quantity: quantity,
                 price: product.price,
                 modifiers: item.modifiers || []
+            });
+        }
+
+        // IMPORTANTE: Se algum produto não foi encontrado, NÃO criar pedido e avisar cliente
+        if (notFoundProducts.length > 0) {
+            log(`Products not found: ${notFoundProducts.join(', ')}`);
+            return JSON.stringify({
+                error: `Não encontrei os seguintes produtos no cardápio: ${notFoundProducts.join(', ')}. Por favor, verifique os nomes corretos no cardápio e tente novamente.`,
+                notFoundProducts: notFoundProducts,
+                suggestion: 'Use get_menu para ver os produtos disponíveis com os nomes corretos.'
             });
         }
 
