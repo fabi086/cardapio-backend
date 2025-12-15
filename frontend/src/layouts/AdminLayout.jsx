@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { LayoutDashboard, LogOut, Settings, UtensilsCrossed, Clock, Sun, Moon, Users, Bot, Menu, X, Tag, QrCode, ShoppingBag, ChefHat, FileSpreadsheet, MapPin } from 'lucide-react';
+import { LayoutDashboard, LogOut, Settings, UtensilsCrossed, Clock, Sun, Moon, Users, Bot, Menu, X, Tag, QrCode, ShoppingBag, ChefHat, FileSpreadsheet, MapPin, Gift } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import InstallPrompt from '../components/InstallPrompt';
 import OrderNotificationListener from '../components/OrderNotificationListener';
@@ -65,6 +65,7 @@ const AdminLayout = () => {
         { icon: UtensilsCrossed, label: 'Categorias', path: '/admin/categories' },
         { icon: LayoutDashboard, label: 'Banners', path: '/admin/banners' },
         { icon: Tag, label: 'Cupons', path: '/admin/coupons' },
+        { icon: Gift, label: 'Fidelidade', path: '/admin/loyalty' },
         { icon: FileSpreadsheet, label: 'Relatórios', path: '/admin/reports' },
         { icon: MapPin, label: 'Zonas Entrega', path: '/admin/delivery-zones' },
         { icon: Bot, label: 'Agente IA', path: '/admin/ai-agent' },
