@@ -1507,20 +1507,25 @@ Telefone: ${userPhone}
         let message = `🔔 *Atualização do Pedido #${orderDetails ? (orderDetails.order_number || orderId) : orderId}*`;
         message += `\nStatus: *${statusLabel}*`;
 
-        // Custom messages based on status
-        if (status === 'approved') {
-            message += `\n\nOba! Seu pedido foi aceito e já vai para a cozinha.`;
-        } else if (status === 'preparing') {
-            message += `\n\nEstamos preparando tudo com carinho! 🔥`;
-        } else if (status === 'ready') {
-            message += `\n\nSeu pedido está pronto!`;
-            if (orderDetails?.delivery_type === 'pickup') message += ` Pode vir buscar.`;
-        } else if (status === 'out_for_delivery') {
-            message += `\n\nNosso entregador já está a caminho! 🛵`;
-        } else if (status === 'delivered') {
-            message += `\n\nPedido entregue. Bom apetite! 😋`;
-        } else if (status === 'cancelled') {
-            message += `\n\nQue pena! O pedido foi cancelado. Se tiver dúvidas, entre em contato.`;
+        // Get custom templates from settings or use defaults
+        const templates = this.settings.whatsapp_templates || {};
+        const defaultTemplates = {
+            'approved': 'Oba! Seu pedido foi aceito e já vai para a cozinha.',
+            'preparing': 'Estamos preparando tudo com carinho! 🔥',
+            'ready': 'Seu pedido está pronto!',
+            'out_for_delivery': 'Nosso entregador já está a caminho! 🛵',
+            'delivered': 'Pedido entregue. Bom apetite! 😋',
+            'cancelled': 'Que pena! O pedido foi cancelado. Se tiver dúvidas, entre em contato.'
+        };
+
+        // Use custom template if available, fallback to default
+        const customMessage = templates[status] || defaultTemplates[status];
+        if (customMessage) {
+            message += `\n\n${customMessage}`;
+            // Special case for ready + pickup
+            if (status === 'ready' && orderDetails?.delivery_type === 'pickup' && !templates[status]) {
+                message += ` Pode vir buscar.`;
+            }
         }
 
         // Add details if available

@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Save, Building2, Phone, MapPin, Clock, DollarSign, Upload, Trash2, Plus, Palette, Map, Share2, Globe, Facebook, Youtube, Instagram, Truck, Type, X, Image as ImageIcon } from 'lucide-react';
+import { Save, Building2, Phone, MapPin, Clock, DollarSign, Upload, Trash2, Plus, Palette, Map, Share2, Globe, Facebook, Youtube, Instagram, Truck, Type, X, Image as ImageIcon, MessageSquare } from 'lucide-react';
 import { optimizeImage, IMAGE_CONFIGS, formatFileSize } from '../../utils/imageOptimizer';
 
 const TabButton = ({ id, label, icon, activeTab, setActiveTab }) => {
@@ -64,6 +64,14 @@ const Settings = () => {
             friday: { open: '18:00', close: '00:00', closed: false },
             saturday: { open: '18:00', close: '00:00', closed: false },
             sunday: { open: '18:00', close: '23:00', closed: false }
+        },
+        whatsapp_templates: {
+            approved: 'Oba! Seu pedido foi aceito e já vai para a cozinha.',
+            preparing: 'Estamos preparando tudo com carinho! 🔥',
+            ready: 'Seu pedido está pronto!',
+            out_for_delivery: 'Nosso entregador já está a caminho! 🛵',
+            delivered: 'Pedido entregue. Bom apetite! 😋',
+            cancelled: 'Que pena! O pedido foi cancelado. Se tiver dúvidas, entre em contato.'
         }
     });
 
@@ -113,7 +121,8 @@ const Settings = () => {
                     social_google: data.social_google ?? '',
                     display_mode: data.display_mode ?? 'grid',
                     products_per_carousel: data.products_per_carousel ?? 6,
-                    opening_hours_schema: data.opening_hours_schema ?? prev.opening_hours_schema
+                    opening_hours_schema: data.opening_hours_schema ?? prev.opening_hours_schema,
+                    whatsapp_templates: data.whatsapp_templates ?? prev.whatsapp_templates
                 }));
             } else {
                 console.log('No settings found, using defaults');
@@ -357,6 +366,7 @@ const Settings = () => {
                     <TabButton id="social" label="Redes Sociais" icon={Share2} activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="hours" label="Horários" icon={Clock} activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="delivery" label="Entregas" icon={Truck} activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabButton id="messages" label="Mensagens" icon={MessageSquare} activeTab={activeTab} setActiveTab={setActiveTab} />
                     <TabButton id="debug" label="Testar Notificações" icon={X} activeTab={activeTab} setActiveTab={setActiveTab} />
                 </div>
 
@@ -652,6 +662,58 @@ const Settings = () => {
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MESSAGES TAB */}
+                    {activeTab === 'messages' && (
+                        <div className="space-y-6 animate-fadeIn">
+                            <h2 className="text-lg font-bold border-b border-stone-200 dark:border-stone-700 pb-2 mb-4 flex items-center gap-2 text-stone-700 dark:text-stone-200"><MessageSquare size={18} /> Mensagens WhatsApp</h2>
+
+                            <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg mb-4 text-sm text-green-800 dark:text-green-200">
+                                <p className="font-bold mb-1">📱 Templates de Notificação</p>
+                                <p>Personalize as mensagens enviadas ao cliente quando o status do pedido muda.</p>
+                                <p className="text-xs mt-2 opacity-75">Variáveis disponíveis: O número do pedido e total são adicionados automaticamente.</p>
+                            </div>
+
+                            <div className="space-y-4">
+                                {[
+                                    { key: 'approved', label: '✅ Pedido Aprovado', emoji: '✅' },
+                                    { key: 'preparing', label: '🔥 Preparando', emoji: '🔥' },
+                                    { key: 'ready', label: '🥡 Pronto', emoji: '🥡' },
+                                    { key: 'out_for_delivery', label: '🛵 Saiu pra Entrega', emoji: '🛵' },
+                                    { key: 'delivered', label: '😋 Entregue', emoji: '😋' },
+                                    { key: 'cancelled', label: '❌ Cancelado', emoji: '❌' }
+                                ].map(({ key, label }) => (
+                                    <div key={key} className="p-4 bg-white dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700">
+                                        <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">{label}</label>
+                                        <textarea
+                                            value={settings.whatsapp_templates?.[key] || ''}
+                                            onChange={(e) => setSettings(prev => ({
+                                                ...prev,
+                                                whatsapp_templates: {
+                                                    ...prev.whatsapp_templates,
+                                                    [key]: e.target.value
+                                                }
+                                            }))}
+                                            rows={2}
+                                            className="w-full p-3 rounded-lg bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-sm resize-none"
+                                            placeholder="Digite a mensagem..."
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-800 dark:text-blue-200">
+                                <p className="font-bold mb-1">💡 Dica</p>
+                                <p>Use emojis para deixar as mensagens mais amigáveis! O sistema adiciona automaticamente:</p>
+                                <ul className="list-disc list-inside mt-2 text-xs space-y-1">
+                                    <li>Número e status do pedido</li>
+                                    <li>Lista de itens</li>
+                                    <li>Valor total e forma de pagamento</li>
+                                    <li>Endereço de entrega</li>
+                                </ul>
                             </div>
                         </div>
                     )}
