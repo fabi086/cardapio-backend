@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { ArrowLeft, Upload, Save, Loader, Plus, Trash2, GripVertical, X } from 'lucide-react';
+import { ArrowLeft, Upload, Save, Loader, Plus, Trash2, GripVertical, X, Package } from 'lucide-react';
 
 const ProductForm = () => {
     const { id } = useParams();
@@ -19,7 +19,10 @@ const ProductForm = () => {
         category_id: '',
         image_url: '',
         is_available: true,
-        modifiers: []
+        modifiers: [],
+        track_stock: false,
+        stock_quantity: 0,
+        low_stock_alert: 5
     });
 
     useEffect(() => {
@@ -252,6 +255,64 @@ const ProductForm = () => {
                             />
                         </div>
                     </div>
+                </div>
+
+                {/* Stock Control */}
+                <div className="bg-white dark:bg-stone-900 p-4 md:p-8 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 space-y-6">
+                    <div className="flex items-center gap-2">
+                        <Package className="text-italian-green" size={24} />
+                        <h2 className="text-xl font-bold text-stone-800 dark:text-stone-100">Controle de Estoque</h2>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-stone-50 dark:bg-stone-800/50 rounded-lg">
+                        <div>
+                            <p className="font-bold text-stone-700 dark:text-stone-300">Controlar Estoque</p>
+                            <p className="text-xs text-stone-500">Ativar para rastrear quantidade disponível</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, track_stock: !prev.track_stock }))}
+                            className={`w-14 h-7 rounded-full transition-colors relative ${formData.track_stock ? 'bg-italian-green' : 'bg-stone-300 dark:bg-stone-600'
+                                }`}
+                        >
+                            <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.track_stock ? 'left-8' : 'left-1'
+                                }`} />
+                        </button>
+                    </div>
+
+                    {formData.track_stock && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Quantidade em Estoque</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={formData.stock_quantity}
+                                    onChange={e => setFormData({ ...formData, stock_quantity: parseInt(e.target.value) || 0 })}
+                                    className="w-full p-3 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-green outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Alerta de Estoque Baixo</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={formData.low_stock_alert}
+                                    onChange={e => setFormData({ ...formData, low_stock_alert: parseInt(e.target.value) || 5 })}
+                                    className="w-full p-3 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 focus:ring-2 focus:ring-italian-green outline-none"
+                                />
+                                <p className="text-xs text-stone-500 mt-1">Alerta quando estoque menor ou igual a este valor</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {formData.track_stock && formData.stock_quantity <= formData.low_stock_alert && (
+                        <div className="p-3 bg-orange-100 dark:bg-orange-900/20 border border-orange-300 dark:border-orange-800 rounded-lg">
+                            <p className="text-orange-800 dark:text-orange-300 text-sm font-bold">
+                                ⚠️ Estoque baixo! Apenas {formData.stock_quantity} unidades restantes
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Modifiers / Extras */}

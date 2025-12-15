@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Pencil, Trash2, Search, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, ChevronDown, ChevronRight, Package, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Products = () => {
@@ -154,6 +154,7 @@ const Products = () => {
                                                 <th className="px-6 py-3 w-20 hidden md:table-cell">Ordem</th>
                                                 <th className="px-6 py-3 hidden md:table-cell">Imagem</th>
                                                 <th className="px-6 py-3">Nome</th>
+                                                <th className="px-6 py-3 hidden lg:table-cell">Estoque</th>
                                                 <th className="px-6 py-3">Preço</th>
                                                 <th className="px-6 py-3 text-right">Ações</th>
                                             </tr>
@@ -185,6 +186,25 @@ const Products = () => {
                                                     </td>
                                                     <td className="px-6 py-3 font-medium text-stone-800 dark:text-stone-200">
                                                         {product.name}
+                                                    </td>
+                                                    <td className="px-6 py-3 hidden lg:table-cell">
+                                                        {!product.track_stock ? (
+                                                            <span className="text-xs text-stone-400 italic">--</span>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${product.stock_quantity <= 0
+                                                                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                                        : product.stock_quantity <= (product.low_stock_alert || 5)
+                                                                            ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                                                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                                    }`}>
+                                                                    {product.stock_quantity} un
+                                                                </span>
+                                                                {product.stock_quantity <= (product.low_stock_alert || 5) && (
+                                                                    <AlertTriangle size={14} className="text-orange-500" />
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </td>
                                                     <td className="px-6 py-3 text-stone-600 dark:text-stone-400">
                                                         R$ {product.price.toFixed(2)}
