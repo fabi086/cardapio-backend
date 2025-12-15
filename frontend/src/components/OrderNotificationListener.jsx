@@ -1,8 +1,57 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 const OrderNotificationListener = () => {
     const audioRef = useRef(null);
+    const [notificationSettings, setNotificationSettings] = useState({
+        sound_enabled: true,
+        sound_url: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
+        volume: 80
+    });
+
+    // Fetch notification settings from database
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const { data } = await supabase
+                    .from('business_settings')
+                    .select('notification_settings')
+                    .single();
+
+                if (data?.notification_settings) {
+                    setNotificationSettings(prev => ({
+                        ...prev,
+                        ...data.notification_settings
+                    }));
+                }
+            } catch (error) {
+                console.log('Using default notification settings');
+            }
+        };
+
+        fetchSettings();
+
+        // Subscribe to settings changes
+        const settingsChannel = supabase
+            .channel('business_settings_changes')
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'business_settings'
+            }, (payload) => {
+                if (payload.new?.notification_settings) {
+                    setNotificationSettings(prev => ({
+                        ...prev,
+                        ...payload.new.notification_settings
+                    }));
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(settingsChannel);
+        };
+    }, []);
 
     useEffect(() => {
         // 1. Request Browser Permission & Subscribe to Web Push
@@ -63,10 +112,11 @@ const OrderNotificationListener = () => {
                 (payload) => {
                     console.log('New order received:', payload);
 
-                    // 1. Play Sound (using HTML5 Audio is more reliable than WebAudio for notifications)
-                    if (audioRef.current) {
+                    // 1. Play Sound (if enabled)
+                    if (notificationSettings.sound_enabled && audioRef.current) {
                         try {
-                            audioRef.current.currentTime = 0; // Reset audio to start
+                            audioRef.current.volume = (notificationSettings.volume || 80) / 100;
+                            audioRef.current.currentTime = 0;
                             const playPromise = audioRef.current.play();
                             if (playPromise !== undefined) {
                                 playPromise.catch(error => console.log('Audio Autoplay blocked:', error));
@@ -77,7 +127,6 @@ const OrderNotificationListener = () => {
                     // 2. Browser Notification (Foreground/Background active tab)
                     if (Notification.permission === 'granted') {
                         try {
-                            // Only show if not handled by SW (redundancy check is okay)
                             const n = new Notification('Novo Pedido Recebido! 🍔', {
                                 body: `Pedido #${payload.new.order_number}\nTotal: R$ ${parseFloat(payload.new.total).toFixed(2)}\nCliente: ${payload.new.customer_name}`,
                                 icon: '/icon-512.png',
@@ -104,7 +153,7 @@ const OrderNotificationListener = () => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, []);
+    }, [notificationSettings]);
 
     function urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -121,11 +170,10 @@ const OrderNotificationListener = () => {
         return outputArray;
     }
 
-    // Simple beep sound
     return (
         <audio
             ref={audioRef}
-            src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3"
+            src={notificationSettings.sound_url}
             preload="auto"
             style={{ display: 'none' }}
         />
@@ -133,3 +181,4 @@ const OrderNotificationListener = () => {
 };
 
 export default OrderNotificationListener;
+

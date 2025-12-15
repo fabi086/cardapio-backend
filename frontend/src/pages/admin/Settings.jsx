@@ -72,6 +72,11 @@ const Settings = () => {
             out_for_delivery: 'Nosso entregador já está a caminho! 🛵',
             delivered: 'Pedido entregue. Bom apetite! 😋',
             cancelled: 'Que pena! O pedido foi cancelado. Se tiver dúvidas, entre em contato.'
+        },
+        notification_settings: {
+            sound_enabled: true,
+            sound_url: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
+            volume: 80
         }
     });
 
@@ -122,7 +127,8 @@ const Settings = () => {
                     display_mode: data.display_mode ?? 'grid',
                     products_per_carousel: data.products_per_carousel ?? 6,
                     opening_hours_schema: data.opening_hours_schema ?? prev.opening_hours_schema,
-                    whatsapp_templates: data.whatsapp_templates ?? prev.whatsapp_templates
+                    whatsapp_templates: data.whatsapp_templates ?? prev.whatsapp_templates,
+                    notification_settings: data.notification_settings ?? prev.notification_settings
                 }));
             } else {
                 console.log('No settings found, using defaults');
@@ -703,6 +709,98 @@ const Settings = () => {
                                         />
                                     </div>
                                 ))}
+                            </div>
+
+                            {/* Sound Settings Section */}
+                            <div className="pt-4 border-t border-stone-200 dark:border-stone-700">
+                                <h3 className="text-md font-bold text-stone-700 dark:text-stone-300 mb-4 flex items-center gap-2">
+                                    🔔 Som de Notificação (Novos Pedidos)
+                                </h3>
+
+                                <div className="space-y-4">
+                                    {/* Sound On/Off */}
+                                    <div className="flex items-center justify-between p-4 bg-white dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700">
+                                        <div>
+                                            <p className="font-bold text-stone-700 dark:text-stone-300">Som Ativado</p>
+                                            <p className="text-xs text-stone-500">Tocar som quando novo pedido chegar</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSettings(prev => ({
+                                                ...prev,
+                                                notification_settings: {
+                                                    ...prev.notification_settings,
+                                                    sound_enabled: !prev.notification_settings?.sound_enabled
+                                                }
+                                            }))}
+                                            className={`w-14 h-7 rounded-full transition-colors relative ${settings.notification_settings?.sound_enabled
+                                                    ? 'bg-italian-green'
+                                                    : 'bg-stone-300 dark:bg-stone-600'
+                                                }`}
+                                        >
+                                            <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${settings.notification_settings?.sound_enabled ? 'left-8' : 'left-1'
+                                                }`} />
+                                        </button>
+                                    </div>
+
+                                    {/* Sound Selection */}
+                                    <div className="p-4 bg-white dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700">
+                                        <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">Tipo de Som</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {[
+                                                { name: 'Campainha', url: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3' },
+                                                { name: 'Caixa', url: 'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3' },
+                                                { name: 'Ding', url: 'https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3' },
+                                                { name: 'Alerta', url: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3' }
+                                            ].map((sound) => (
+                                                <button
+                                                    key={sound.name}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSettings(prev => ({
+                                                            ...prev,
+                                                            notification_settings: {
+                                                                ...prev.notification_settings,
+                                                                sound_url: sound.url
+                                                            }
+                                                        }));
+                                                        // Play preview
+                                                        const audio = new Audio(sound.url);
+                                                        audio.volume = (settings.notification_settings?.volume || 80) / 100;
+                                                        audio.play().catch(() => { });
+                                                    }}
+                                                    className={`p-3 rounded-lg border-2 text-sm font-bold transition-all ${settings.notification_settings?.sound_url === sound.url
+                                                            ? 'border-italian-green bg-green-50 dark:bg-green-900/20 text-italian-green'
+                                                            : 'border-stone-200 dark:border-stone-600 text-stone-600 dark:text-stone-400 hover:border-stone-400'
+                                                        }`}
+                                                >
+                                                    🔊 {sound.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Volume */}
+                                    <div className="p-4 bg-white dark:bg-stone-800/50 rounded-lg border border-stone-200 dark:border-stone-700">
+                                        <label className="block text-sm font-bold text-stone-700 dark:text-stone-300 mb-2">
+                                            Volume: {settings.notification_settings?.volume || 80}%
+                                        </label>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="100"
+                                            value={settings.notification_settings?.volume || 80}
+                                            onChange={(e) => setSettings(prev => ({
+                                                ...prev,
+                                                notification_settings: {
+                                                    ...prev.notification_settings,
+                                                    volume: parseInt(e.target.value)
+                                                }
+                                            }))}
+                                            className="w-full h-2 bg-stone-200 dark:bg-stone-700 rounded-lg appearance-none cursor-pointer accent-italian-green"
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-800 dark:text-blue-200">
