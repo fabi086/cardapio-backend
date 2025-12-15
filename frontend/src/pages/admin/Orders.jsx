@@ -259,47 +259,165 @@ const Orders = () => {
 
     const handlePrint = (order) => {
         const printWindow = window.open('', '_blank');
-        const itemsHtml = order.order_items.map(item => `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                <span>${item.quantity}x ${item.product_name}</span>
-                <span>R$ ${(item.price * item.quantity).toFixed(2)}</span>
-            </div>
-            ${item.modifiers ? Object.values(item.modifiers).flat().map(m => `<div style="font-size: 12px; color: #666; margin-left: 10px;">+ ${m.name}</div>`).join('') : ''}
-        `).join('');
+
+        // Format items for 80mm thermal printer (48 chars width typical)
+        const formatLine = (left, right, width = 48) => {
+            const maxLeft = width - right.length - 1;
+            const truncLeft = left.length > maxLeft ? left.substring(0, maxLeft - 2) + '..' : left;
+            const spaces = ' '.repeat(Math.max(1, width - truncLeft.length - right.length));
+            return truncLeft + spaces + right;
+        };
+
+        const dashedLine = '------------------------------------------------';
+        const doubleLine = '================================================';
+
+        const itemsLines = order.order_items.map(item => {
+            const qty = `${item.quantity}x`;
+            const name = item.product_name;
+            const price = `R$ ${(item.price * item.quantity).toFixed(2)}`;
+            let lines = formatLine(`${qty} ${name}`, price);
+
+            // Add modifiers if any
+            if (item.modifiers) {
+                Object.values(item.modifiers).flat().forEach(m => {
+                    lines += `\n   + ${m.name}`;
+                });
+            }
+            if (item.observation) {
+                lines += `\n   OBS: ${item.observation}`;
+            }
+            return lines;
+        }).join('\n');
+
+        const tableInfo = order.table_number ? `\n   *** MESA ${order.table_number} ***\n` : '';
+        const deliveryType = order.table_number ? 'MESA' : (order.customer_address ? 'DELIVERY' : 'RETIRADA');
 
         printWindow.document.write(`
             <html>
                 <head>
                     <title>Pedido #${order.order_number || order.id.slice(0, 8)}</title>
                     <style>
-                        body { font-family: monospace; width: 300px; margin: 0 auto; padding: 20px; }
-                        .header { text-align: center; margin-bottom: 20px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
-                        .customer { margin-bottom: 20px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
-                        .items { margin-bottom: 20px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
-                        .total { text-align: right; font-weight: bold; font-size: 18px; }
+                        @page { 
+                            size: 80mm auto; 
+                            margin: 0; 
+                        }
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }
+                        body { 
+                            font-family: 'Courier New', monospace; 
+                            font-size: 12px;
+                            line-height: 1.3;
+                            width: 80mm; 
+                            padding: 8px;
+                            background: #fff;
+                        }
+                        .center { text-align: center; }
+                        .bold { font-weight: bold; }
+                        .large { font-size: 16px; }
+                        .xlarge { font-size: 20px; }
+                        .small { font-size: 10px; }
+                        .dashed { border-top: 1px dashed #000; margin: 8px 0; }
+                        .double { border-top: 2px solid #000; margin: 8px 0; }
+                        .row { display: flex; justify-content: space-between; }
+                        .items { white-space: pre-wrap; font-size: 11px; }
+                        .highlight { 
+                            background: #000; 
+                            color: #fff; 
+                            padding: 4px 8px; 
+                            display: inline-block;
+                            font-weight: bold;
+                        }
+                        .spacing { margin: 8px 0; }
+                        @media print {
+                            body { width: 80mm; }
+                        }
                     </style>
                 </head>
                 <body>
-                    <div class="header">
-                        <h2>CARDÁPIO DIGITAL</h2>
-                        <p>Pedido #${order.order_number || order.id.slice(0, 8)}</p>
-                        <p>${new Date(order.created_at).toLocaleString()}</p>
+                    <!-- Header -->
+                    <div class="center spacing">
+                        <div class="xlarge bold">CARDÁPIO DIGITAL</div>
+                        <div class="small">Pedido Recebido</div>
                     </div>
-                    <div class="customer">
-                        <p><strong>Cliente:</strong> ${order.customer_name}</p>
-                        <p><strong>Tel:</strong> ${order.customer_phone}</p>
-                        <p><strong>Endereço:</strong> ${order.customer_address}</p>
-                        <p><strong>Pagamento:</strong> ${getPaymentMethodLabel(order.payment_method)} ${order.change_for ? `(Troco para ${order.change_for})` : ''}</p>
+                    
+                    <div class="dashed"></div>
+                    
+                    <!-- Order Number -->
+                    <div class="center spacing">
+                        <div class="large bold">PEDIDO #${order.order_number || order.id.slice(0, 8).toUpperCase()}</div>
+                        <div class="highlight">${deliveryType}</div>
+                        ${tableInfo}
                     </div>
-                    <div class="items">
-                        ${itemsHtml}
+                    
+                    <div class="dashed"></div>
+                    
+                    <!-- Date/Time -->
+                    <div class="center small spacing">
+                        ${new Date(order.created_at).toLocaleDateString('pt-BR')} às ${new Date(order.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </div>
-                    <div class="total">
-                        ${order.delivery_fee ? `<p style="display: flex; justify-content: space-between;"><span>Taxa Entrega:</span> <span>R$ ${Number(order.delivery_fee).toFixed(2)}</span></p>` : ''}
-                        <p style="display: flex; justify-content: space-between; font-weight: bold; font-size: 18px; margin-top: 5px;"><span>Total:</span> <span>R$ ${order.total.toFixed(2)}</span></p>
+                    
+                    <div class="dashed"></div>
+                    
+                    <!-- Customer -->
+                    <div class="spacing">
+                        <div class="bold">CLIENTE:</div>
+                        <div>${order.customer_name || '-'}</div>
+                        <div>Tel: ${order.customer_phone || '-'}</div>
+                        ${order.customer_address ? `<div style="margin-top:4px"><b>ENDEREÇO:</b><br>${order.customer_address}</div>` : ''}
                     </div>
+                    
+                    <div class="double"></div>
+                    
+                    <!-- Items -->
+                    <div class="bold spacing">ITENS DO PEDIDO:</div>
+                    <div class="items spacing">${itemsLines}</div>
+                    
+                    <div class="double"></div>
+                    
+                    <!-- Totals -->
+                    <div class="spacing">
+                        ${order.delivery_fee > 0 ? `<div class="row"><span>Taxa Entrega:</span><span>R$ ${Number(order.delivery_fee).toFixed(2)}</span></div>` : ''}
+                        <div class="row large bold" style="margin-top:4px">
+                            <span>TOTAL:</span>
+                            <span>R$ ${order.total.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="dashed"></div>
+                    
+                    <!-- Payment -->
+                    <div class="center spacing">
+                        <div class="bold">PAGAMENTO:</div>
+                        <div class="large">${getPaymentMethodLabel(order.payment_method)}</div>
+                        ${order.change_for ? `<div class="bold" style="margin-top:4px">TROCO PARA: R$ ${order.change_for}</div>` : ''}
+                    </div>
+                    
+                    ${order.notes ? `
+                        <div class="dashed"></div>
+                        <div class="spacing">
+                            <div class="bold">OBSERVAÇÕES:</div>
+                            <div>${order.notes}</div>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="dashed"></div>
+                    
+                    <!-- Footer -->
+                    <div class="center small spacing">
+                        Obrigado pela preferência!<br>
+                        Volte sempre!
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;"></div>
+                    
                     <script>
-                        window.onload = function() { window.print(); window.close(); }
+                        window.onload = function() { 
+                            window.print(); 
+                            setTimeout(function() { window.close(); }, 500);
+                        }
                     </script>
                 </body>
             </html>
