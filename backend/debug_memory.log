@@ -19332,3 +19332,102 @@ Status: *🛵 Saiu...
 Status: *🛵 Saiu...
 2025-12-12T18:05:52.240Z - Saving message for 5511966887073(assistant): 🔔 *Atualização do Pedido #54*
 Status: *🛵 Saiu pa...
+2025-12-15T01:39:02.017Z - ===== CREATE ORDER CALLED =====
+2025-12-15T01:39:02.038Z - Input customerPhone: 5511999999999
+2025-12-15T01:39:02.040Z - Input items: [{"productId":"e37436ab-c593-42f3-a3bf-b65bd9cf05f2","quantity":1}]
+2025-12-15T01:39:02.041Z - Input paymentMethod: Dinheiro
+2025-12-15T01:39:02.041Z - Input cep: undefined
+2025-12-15T01:39:02.042Z - Input deliveryType: delivery
+2025-12-15T01:39:02.042Z - Formatted customer phone: 5511999999999
+2025-12-15T01:39:02.523Z - Customer not found for phone: 5511999999999
+2025-12-15T01:39:02.574Z - ===== CREATE ORDER CALLED =====
+2025-12-15T01:39:02.575Z - Input customerPhone: 5511999999999
+2025-12-15T01:39:02.576Z - Input items: [{"productId":"e37436ab-c593-42f3-a3bf-b65bd9cf05f2","quantity":2}]
+2025-12-15T01:39:02.576Z - Input paymentMethod: Dinheiro
+2025-12-15T01:39:02.577Z - Input cep: undefined
+2025-12-15T01:39:02.577Z - Input deliveryType: delivery
+2025-12-15T01:39:02.578Z - Formatted customer phone: 5511999999999
+2025-12-15T01:39:02.661Z - Customer not found for phone: 5511999999999
+2025-12-15T01:39:51.964Z - ===== CREATE ORDER CALLED =====
+2025-12-15T01:39:51.966Z - Input customerPhone: 5511999999999
+2025-12-15T01:39:51.967Z - Input items: [{"productId":"e37436ab-c593-42f3-a3bf-b65bd9cf05f2","quantity":1}]
+2025-12-15T01:39:51.968Z - Input paymentMethod: Dinheiro
+2025-12-15T01:39:51.969Z - Input cep: undefined
+2025-12-15T01:39:51.970Z - Input deliveryType: delivery
+2025-12-15T01:39:51.970Z - Formatted customer phone: 5511999999999
+2025-12-15T01:39:52.177Z - Customer not found for phone: 5511999999999
+2025-12-15T01:39:52.215Z - ===== CREATE ORDER CALLED =====
+2025-12-15T01:39:52.216Z - Input customerPhone: 5511999999999
+2025-12-15T01:39:52.217Z - Input items: [{"productId":"e37436ab-c593-42f3-a3bf-b65bd9cf05f2","quantity":2}]
+2025-12-15T01:39:52.218Z - Input paymentMethod: Dinheiro
+2025-12-15T01:39:52.218Z - Input cep: undefined
+2025-12-15T01:39:52.219Z - Input deliveryType: delivery
+2025-12-15T01:39:52.219Z - Formatted customer phone: 5511999999999
+2025-12-15T01:39:52.290Z - Customer not found for phone: 5511999999999
+2025-12-15T01:40:34.857Z - ===== CREATE ORDER CALLED =====
+2025-12-15T01:40:34.859Z - Input customerPhone: 5511999999999
+2025-12-15T01:40:34.860Z - Input items: [{"productId":"e37436ab-c593-42f3-a3bf-b65bd9cf05f2","quantity":1}]
+2025-12-15T01:40:34.860Z - Input paymentMethod: Dinheiro
+2025-12-15T01:40:34.861Z - Input cep: undefined
+2025-12-15T01:40:34.862Z - Input deliveryType: delivery
+2025-12-15T01:40:34.863Z - Formatted customer phone: 5511999999999
+2025-12-15T01:40:35.037Z - Customer not found for phone: 5511999999999
+2025-12-15T01:40:35.083Z - ===== CREATE ORDER CALLED =====
+2025-12-15T01:40:35.084Z - Input customerPhone: 5511999999999
+2025-12-15T01:40:35.085Z - Input items: [{"productId":"e37436ab-c593-42f3-a3bf-b65bd9cf05f2","quantity":2}]
+2025-12-15T01:40:35.085Z - Input paymentMethod: Dinheiro
+2025-12-15T01:40:35.086Z - Input cep: undefined
+2025-12-15T01:40:35.086Z - Input deliveryType: delivery
+2025-12-15T01:40:35.087Z - Formatted customer phone: 5511999999999
+2025-12-15T01:40:35.167Z - Customer not found for phone: 5511999999999
+2025-12-15T01:42:15.856Z - ===== CREATE ORDER CALLED =====
+2025-12-15T01:42:15.882Z - Input customerPhone: 5511999999999
+2025-12-15T01:42:15.883Z - Input items: [{"productId":"e37436ab-c593-42f3-a3bf-b65bd9cf05f2","quantity":1}]
+2025-12-15T01:42:15.884Z - Input paymentMethod: Dinheiro
+2025-12-15T01:42:15.886Z - Input cep: undefined
+2025-12-15T01:42:15.886Z - Input deliveryType: delivery
+2025-12-15T01:42:15.888Z - Formatted customer phone: 5511999999999
+2025-12-15T01:42:16.661Z - Customer not found for phone: 5511999999999
+2025-12-15T01:42:16.743Z - ===== CREATE ORDER CALLED =====
+2025-12-15T01:42:16.744Z - Input customerPhone: 5511999999999
+2025-12-15T01:42:16.745Z - Input items: [{"productId":"e37436ab-c593-42f3-a3bf-b65bd9cf05f2","quantity":2}]
+2025-12-15T01:42:16.745Z - Input paymentMethod: Dinheiro
+2025-12-15T01:42:16.746Z - Input cep: undefined
+2025-12-15T01:42:16.748Z - Input deliveryType: delivery
+2025-12-15T01:42:16.749Z - Formatted customer phone: 5511999999999
+2025-12-15T01:42:16.861Z - Customer not found for phone: 5511999999999
+2025-12-15T01:42:47.973Z - ===== CREATE ORDER CALLED =====
+2025-12-15T01:42:47.976Z - Input customerPhone: 5511999999999
+2025-12-15T01:42:47.977Z - Input items: [{"productId":"e37436ab-c593-42f3-a3bf-b65bd9cf05f2","quantity":1}]
+2025-12-15T01:42:47.978Z - Input paymentMethod: Dinheiro
+2025-12-15T01:42:47.979Z - Input cep: undefined
+2025-12-15T01:42:47.979Z - Input deliveryType: delivery
+2025-12-15T01:42:47.980Z - Formatted customer phone: 5511999999999
+2025-12-15T01:42:48.215Z - Customer not found for phone: 5511999999999
+2025-12-15T01:43:25.399Z - Tool called: registerCustomer. Input: {"name":"Test Stock User","phone":"5511999999999","address":"Rua Teste Stock","cep":"12345678"}
+2025-12-15T01:43:25.402Z - Formatted phone: 5511999999999
+2025-12-15T01:43:25.666Z - Customer registered: d18a2aa3-23f1-44ce-8a37-1133fa953baf
+2025-12-15T01:43:25.670Z - ===== CREATE ORDER CALLED =====
+2025-12-15T01:43:25.671Z - Input customerPhone: 5511999999999
+2025-12-15T01:43:25.672Z - Input items: [{"productId":"e37436ab-c593-42f3-a3bf-b65bd9cf05f2","quantity":1}]
+2025-12-15T01:43:25.672Z - Input paymentMethod: Dinheiro
+2025-12-15T01:43:25.673Z - Input cep: undefined
+2025-12-15T01:43:25.674Z - Input deliveryType: delivery
+2025-12-15T01:43:25.674Z - Formatted customer phone: 5511999999999
+2025-12-15T01:43:25.713Z - Customer found: ID=d18a2aa3-23f1-44ce-8a37-1133fa953baf, Name=Test Stock User, Phone=5511999999999
+2025-12-15T01:43:25.715Z - Calculating delivery fee for CEP: 12345678
+2025-12-15T01:43:25.760Z - Clean CEP: 12345678
+2025-12-15T01:43:25.761Z - CEP 12345678 not found in any zone
+2025-12-15T01:43:25.762Z - Delivery fee calculation error: CEP fora da área de entrega
+2025-12-15T01:43:25.802Z - ===== CREATE ORDER CALLED =====
+2025-12-15T01:43:25.803Z - Input customerPhone: 5511999999999
+2025-12-15T01:43:25.804Z - Input items: [{"productId":"e37436ab-c593-42f3-a3bf-b65bd9cf05f2","quantity":2}]
+2025-12-15T01:43:25.804Z - Input paymentMethod: Dinheiro
+2025-12-15T01:43:25.805Z - Input cep: undefined
+2025-12-15T01:43:25.805Z - Input deliveryType: delivery
+2025-12-15T01:43:25.806Z - Formatted customer phone: 5511999999999
+2025-12-15T01:43:25.889Z - Customer found: ID=d18a2aa3-23f1-44ce-8a37-1133fa953baf, Name=Test Stock User, Phone=5511999999999
+2025-12-15T01:43:25.890Z - Calculating delivery fee for CEP: 12345678
+2025-12-15T01:43:25.938Z - Clean CEP: 12345678
+2025-12-15T01:43:25.939Z - CEP 12345678 not found in any zone
+2025-12-15T01:43:25.940Z - Delivery fee calculation error: CEP fora da área de entrega

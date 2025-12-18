@@ -190,7 +190,7 @@ class AIService {
             // Build query
             let query = supabase
                 .from('products')
-                .select('id, name, description, price, category_id')
+                .select('id, name, description, price, category_id, track_stock, stock_quantity')
                 .eq('is_available', true);
 
             // If category specified, filter by it
@@ -205,14 +205,17 @@ class AIService {
                 }
             }
 
-            const { data: products, error } = await query;
+            const { data: productsData, error } = await query;
 
             if (error) {
                 logToFile(`Supabase Error: ${JSON.stringify(error)}`);
                 return JSON.stringify({ error: error.message });
             }
 
-            logToFile(`Query success. Found ${products ? products.length : 0} items.`);
+            // Filter out stock items
+            const products = productsData.filter(p => !p.track_stock || p.stock_quantity > 0);
+
+            logToFile(`Query success. Found ${products ? products.length : 0} items (after stock filter).`);
 
             // If no category specified, return list of categories for user to choose
             if (!categoryName && categories && categories.length > 0) {

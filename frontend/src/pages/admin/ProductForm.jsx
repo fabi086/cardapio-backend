@@ -380,11 +380,14 @@ const ProductForm = () => {
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            checked={group.required}
-                                            onChange={e => updateModifierGroup(groupIndex, 'required', e.target.checked)}
+                                            checked={formData.is_available}
+                                            onChange={e => setFormData({ ...formData, is_available: e.target.checked })}
                                             className="w-5 h-5 text-italian-red rounded focus:ring-italian-red"
                                         />
-                                        <span className="font-medium">Obrigatório</span>
+                                        <div>
+                                            <span className="font-medium block">Disponível no Menu</span>
+                                            <span className="text-xs text-stone-500">Desmarque para pausar (continuará visível, mas não comprável)</span>
+                                        </div>
                                     </label>
                                 </div>
                                 <button
