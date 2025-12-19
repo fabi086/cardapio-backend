@@ -1326,69 +1326,101 @@ ${this.settings.system_prompt || 'Você é um atendente virtual simpático e pre
             const responseMessage = completion.choices[0].message;
             log(`OpenAI response received. Tool calls: ${responseMessage.tool_calls ? responseMessage.tool_calls.length : 0}`);
 
-            if (responseMessage.tool_calls) {
-                messages.push(responseMessage);
+            let currentResponse = responseMessage;
+            let loopCount = 0;
+            const MAX_LOOPS = 5;
 
-                let cartActionData = null;
+            // Loop while there are tool calls and we haven't hit the limit
+            while (currentResponse.tool_calls && loopCount < MAX_LOOPS) {
+                loopCount++;
+                console.log(`--- Tool Loop #${loopCount} ---`);
+                messages.push(currentResponse); // Add the assistant's request-to-call-tool message
 
-                for (const toolCall of responseMessage.tool_calls) {
+                for (const toolCall of currentResponse.tool_calls) {
                     const functionName = toolCall.function.name;
-                    const functionArgs = JSON.parse(toolCall.function.arguments);
+                    let functionArgs;
+                    try {
+                        functionArgs = JSON.parse(toolCall.function.arguments);
+                    } catch (e) {
+                        console.error('Error parsing tool args:', e);
+                        functionArgs = {};
+                    }
+
                     console.log(`Executing tool: ${functionName}`, functionArgs);
-                    log(`Executing tool: ${functionName}`);
+                    log(`Executing tool: ${functionName} (Loop ${loopCount})`);
 
                     let functionResult;
 
-                    if (functionName === 'get_menu') {
-                        functionResult = await this.getMenu(functionArgs.categoryName);
-                    } else if (functionName === 'register_customer') {
-                        // Only force-override phone if on WhatsApp (trusted sender) or if missing
-                        if (channel === 'whatsapp' || !functionArgs.phone) {
-                            functionArgs.phone = userPhone;
+                    try {
+                        if (functionName === 'get_menu') {
+                            functionResult = await this.getMenu(functionArgs.categoryName);
+                        } else if (functionName === 'register_customer') {
+                            if (channel === 'whatsapp' || !functionArgs.phone) {
+                                functionArgs.phone = userPhone;
+                            }
+                            functionResult = await this.registerCustomer(functionArgs);
+                        } else if (functionName === 'create_order') {
+                            if (!functionArgs.customerPhone) functionArgs.customerPhone = userPhone;
+                            functionResult = await this.createOrder(functionArgs);
+                        } else if (functionName === 'add_to_cart') {
+                            functionResult = await this.addToCart(functionArgs);
+                            try {
+                                const parsed = JSON.parse(functionResult);
+                                if (parsed.action) cartActionData = parsed;
+                            } catch (e) { }
+                        } else if (functionName === 'calculate_total') {
+                            functionResult = await this.calculateTotal(functionArgs);
+                        } else if (functionName === 'check_order_status') {
+                            functionResult = await this.checkOrderStatus(functionArgs);
+                        } else if (functionName === 'lookup_cep') {
+                            functionResult = JSON.stringify(await this.lookupCep(functionArgs.cep));
+                        } else if (functionName === 'get_customer') {
+                            functionResult = await this.getCustomerByPhone(functionArgs.phone || userPhone);
+                        } else {
+                            functionResult = JSON.stringify({ error: "Tool not found" });
                         }
-                        functionResult = await this.registerCustomer(functionArgs);
-                    } else if (functionName === 'create_order') {
-                        if (!functionArgs.customerPhone) functionArgs.customerPhone = userPhone;
-                        functionResult = await this.createOrder(functionArgs);
-                    } else if (functionName === 'add_to_cart') {
-                        functionResult = await this.addToCart(functionArgs);
-                        try {
-                            cartActionData = JSON.parse(functionResult);
-                        } catch (e) { }
-                    } else if (functionName === 'calculate_total') {
-                        functionResult = await this.calculateTotal(functionArgs);
-                    } else if (functionName === 'check_order_status') {
-                        functionResult = await this.checkOrderStatus(functionArgs);
-                    } else if (functionName === 'lookup_cep') {
-                        functionResult = JSON.stringify(await this.lookupCep(functionArgs.cep));
-                    } else if (functionName === 'get_customer') {
-                        functionResult = await this.getCustomerByPhone(functionArgs.phone || userPhone);
+                    } catch (toolError) {
+                        console.error(`Error executing ${functionName}:`, toolError);
+                        functionResult = JSON.stringify({ error: `Error executing tool: ${toolError.message}` });
                     }
 
                     messages.push({
                         tool_call_id: toolCall.id,
                         role: "tool",
                         name: functionName,
-                        content: functionResult,
+                        content: String(functionResult),
                     });
                 }
 
-                const secondResponse = await this.openai.chat.completions.create({
+                // Call OpenAI again with the tool results
+                const nextResponse = await this.openai.chat.completions.create({
                     model: modelToUse,
-                    messages: messages
+                    messages: messages,
+                    tools: tools, // Keep tools available for chaining
+                    tool_choice: "auto"
                 });
 
-                const finalContent = secondResponse.choices[0].message.content;
+                currentResponse = nextResponse.choices[0].message;
+
+                // If the next response has content AND tool calls, we might want to log/send the content?
+                // Usually intermediate content is just "Thinking...", so we can ignore it or log it.
+                // But if it has NO tool calls, the loop ends and we send the final content.
+            }
+
+            if (loopCount >= MAX_LOOPS) {
+                console.warn('Max AI tool loop reached. Stopping.');
+                log('Warning: Max AI tool loop reached.');
+            }
+
+            // Final response handling (Text)
+            const finalContent = currentResponse.content;
+            if (finalContent) {
                 await this.saveMessage(userPhone, 'assistant', finalContent);
                 const sentMsg = await this.sendMessage(remoteJid, finalContent, channel, cartActionData);
                 if (sentMsg) responses.push(sentMsg);
-                log(`Sent final response (after tools).`);
-
+                log(`Sent final response.`);
             } else {
-                await this.saveMessage(userPhone, 'assistant', responseMessage.content);
-                const sentMsg = await this.sendMessage(remoteJid, responseMessage.content, channel);
-                if (sentMsg) responses.push(sentMsg);
-                log(`Sent final response (text only).`);
+                console.warn('Final response from OpenAI was empty (likely still trying to call tools but loop stopped).');
             }
 
         } catch (error) {
