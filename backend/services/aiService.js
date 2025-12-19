@@ -745,6 +745,70 @@ class AIService {
         });
     }
 
+    async calculateTotal({ items }) {
+        const fs = require('fs');
+        const path = require('path');
+        const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
+        const log = (msg) => { try { fs.appendFileSync(logFile, `${new Date().toISOString()} - ${msg}\n`); } catch (e) { } };
+
+        log(`Tool called: calculateTotal. Items: ${JSON.stringify(items)}`);
+
+        let total = 0;
+        const calculatedItems = [];
+
+        for (const item of items) {
+            let price = 0;
+            let productName = item.productName;
+
+            // Try to find product to get real price
+            if (item.productName) {
+                const { data } = await supabase
+                    .from('products')
+                    .select('price, name')
+                    .ilike('name', `%${item.productName}%`)
+                    .eq('is_available', true)
+                    .limit(1);
+
+                if (data && data.length > 0) {
+                    price = parseFloat(data[0].price);
+                    productName = data[0].name; // Use canonical name
+                }
+            } else if (item.productId) {
+                const { data } = await supabase
+                    .from('products')
+                    .select('price, name')
+                    .eq('id', item.productId)
+                    .single();
+                if (data) {
+                    price = parseFloat(data.price);
+                    productName = data.name;
+                }
+            }
+
+            // Add modifiers price if any (heuristic, ideally should come from DB complexity)
+            // For now, assumig modifiers dont add price or user provides final price is risky.
+            // Best is to trust DB price for base product.
+            // If item has modifiers with price, we might need more complex logic.
+            // For MVP: Base price * quantity. 
+
+            const itemTotal = price * (item.quantity || 1);
+            total += itemTotal;
+
+            calculatedItems.push({
+                name: productName,
+                quantity: item.quantity || 1,
+                unitPrice: price,
+                subtotal: itemTotal
+            });
+        }
+
+        return JSON.stringify({
+            items: calculatedItems,
+            total: total.toFixed(2),
+            message: `O total calculado é R$ ${total.toFixed(2)}`
+        });
+    }
+
     async checkOrderStatus({ orderId }) {
         const fs = require('fs');
         const path = require('path');
@@ -983,72 +1047,38 @@ class AIService {
             const systemPrompt = `
 ${this.settings.system_prompt || 'Você é um atendente virtual simpático e prestativo de uma pizzaria/restaurante.'}
 
-🚨🚨🚨 REGRAS OBRIGATÓRIAS - LEIA PRIMEIRO 🚨🚨🚨
+🚨🚨🚨 REGRAS DE OURO 🚨🚨🚨
 
-1. VOCÊ NÃO SABE OS PRODUTOS NEM PREÇOS DE COR - Você DEVE usar \`get_menu\` para descobrir
-2. ANTES de mencionar QUALQUER produto ou preço, use \`get_menu\` para buscar do banco de dados
-3. NUNCA sugira produtos que você não verificou (ex: NÃO diga "que tal um vinho?" sem verificar se existe)
-4. NUNCA invente preços - use APENAS os valores retornados por \`get_menu\`
-5. Se o cliente pedir algo que não está no cardápio, diga: "Desculpe, não temos [produto]. Veja o que temos..."
-6. Ao listar opções de bebidas/produtos, PRIMEIRO chame \`get_menu\` com a categoria, DEPOIS liste EXATAMENTE o que foi retornado
+1. **ZERO ALUCINAÇÃO DE PREÇO:** NUNCA some valores de cabeça.
+2. **USE A CALCULADORA:** Antes de mostrar qualquer total para o cliente, OBRIGATORIAMENTE chame a função \`calculate_total\` com os itens do pedido. Use o valor que ela retornar.
+3. **ENDEREÇO NO FINAL:** Não peça o endereço no início. Deixe para pedir/confirmar APENAS quando o cliente disser que quer fechar o pedido.
+4. **CONSULTE O CARDÁPIO:** Nunca invente produtos. Use \`get_menu\` antes de sugerir.
 
-${!isOpen ? '⚠️ IMPORTANTE: O estabelecimento está FECHADO agora. Informe o cliente de forma gentil e diga que o pedido será processado assim que abrirmos.' : ''}
+🎭 PERSONALIDADE:
+- Amigo, simpático e casual (use emojis 🍕😄).
+- Evite textões enormes.
+- Fale como gente: "Bora fechar?", "O que manda hoje?", "Deu R$ 50,00 certinho".
 
-🎭 PERSONALIDADE E COMPORTAMENTO:
-- Seja MUITO simpático, amigável e acolhedor
-- Use emojis com moderação (1-2 por mensagem) para parecer natural
-- Fale como um atendente humano real, não como robô
-- Use "você" e seja informal mas educado
-- Se o cliente fizer piadas ou conversa casual, responda de forma natural e leve
-- NUNCA diga que é uma IA ou robô - você é o atendente virtual da loja
-- Use frases curtas e diretas, como mensagens de WhatsApp reais
+📋 FLUXO DE ATENDIMENTO SUGERIDO:
 
-👤 CLIENTE ATUAL:
-Nome: ${pushName || 'Cliente'}
-Telefone: ${userPhone}
+1. **OLÁ & AJUDA:**
+   - Cumprimente pelo nome (se tiver).
+   - Pergunte o que o cliente quer comer/beber hoje. NÃO PEÇA ENDEREÇO AGORA.
 
-📋 FLUXO DE ATENDIMENTO:
+2. **MONTAGEM DO PEDIDO:**
+   - Use \`get_menu\` para ver opções.
+   - Adicione itens conforme o pedido.
+   - SEMPRE pergunte observações ("Sem cebola?", "Ao ponto?").
 
-1. **BOAS-VINDAS**
-   - PRIMEIRO: chame \`get_customer\` para verificar se é cliente cadastrado
-   - Se encontrado: "Olá [nome]! 😊 Que bom te ver de volta! Seu endereço ainda é [endereço]?"
-   - Se não encontrado: cumprimente normalmente e quando pedir, faça cadastro
-   - Pergunte como pode ajudar
+3. **FECHAMENTO (MOMENTO CRÍTICO):**
+   - Quando o cliente disser "fecha", "acabou", "quanto deu":
+   - 1º: Chame \`calculate_total\` para ter a soma exata do banco.
+   - 2º: Mostre o resumo com o total retornado pela tool. NÃO FAÇA CONTAS SOZINHO.
+   - 3º: AGORA peça/confirme o endereço de entrega e forma de pagamento.
+   - 4º: Chame \`create_order\` com tudo preenchido.
 
-2. **CARDÁPIO**
-   - Se pedirem cardápio, PRIMEIRO pergunte a categoria
-   - Use \`get_menu\` para listar categorias e depois produtos
-   - Se produto tem VARIAÇÕES (sucos, tamanhos), LISTE as opções antes de adicionar
-     * Ex: "Temos suco de laranja, maracujá e limão. Qual você prefere?"
-   - Formate: emoji + nome + preço (limpo e curto)
-
-3. **MONTAR PEDIDO**
-   - Anote os itens com atenção
-   - SEMPRE pergunte: "Alguma observação no pedido? (sem cebola, borda recheada, etc)"
-   - Se quiser sugerir adicionais, PRIMEIRO use \`get_menu\` para ver o que existe, DEPOIS sugira APENAS produtos que existem
-   - NUNCA sugira produtos genéricos como "pão de alho", "vinho", "sobremesa" sem verificar antes com get_menu
-   - Confirme cada item antes de prosseguir
-
-4. **ENDEREÇO E CEP**
-   - Se cliente informar CEP, use \`lookup_cep\` para buscar o endereço
-   - Confirme: "Achei! É na [rua], [bairro]? Qual o número?"
-   - Use \`register_customer\` para salvar/atualizar dados
-
-5. **PAGAMENTO**
-   - "Como prefere pagar? PIX, cartão ou dinheiro?"
-   - Se dinheiro: "Precisa de troco pra quanto?"
-
-6. **FINALIZAR**
-   - Use \`create_order\` com todos os dados incluindo observações
-   - Mostre resumo completo com valores
-   - IMPORTANTE: Envie o link de acompanhamento ASSIM (para ser clicável):
-     https://cardapio-backend.vercel.app/order/[ID_DO_PEDIDO]
-   - NÃO use formato markdown [texto](url) - apenas cole a URL direta
-
-💡 OUTRAS REGRAS:
-- Se produto tem variações, PERGUNTE qual antes de adicionar
-- SEMPRE pergunte sobre observações antes de finalizar
-- Se cliente informar CEP, busque o endereço automaticamente
+4. **LINK DO PEDIDO:**
+   - Envie o link puro: https://cardapio-backend.vercel.app/order/[ID]
             `;
 
             // Definir messages ANTES da chamada OpenAI
@@ -1147,6 +1177,32 @@ Telefone: ${userPhone}
                                 }
                             },
                             required: ["customerPhone", "items", "paymentMethod"]
+                        }
+                    }
+                },
+                {
+                    type: "function",
+                    function: {
+                        name: "calculate_total",
+                        description: "Calcula o valor total exato dos itens consultando o banco de dados. Use SEMPRE antes de mostrar o resumo de valores para o cliente.",
+                        parameters: {
+                            type: "object",
+                            properties: {
+                                items: {
+                                    type: "array",
+                                    description: "Lista de itens para calcular",
+                                    items: {
+                                        type: "object",
+                                        properties: {
+                                            productName: { type: "string" },
+                                            productId: { type: "string" },
+                                            quantity: { type: "number" }
+                                        },
+                                        required: ["quantity"]
+                                    }
+                                }
+                            },
+                            required: ["items"]
                         }
                     }
                 },
@@ -1299,6 +1355,8 @@ Telefone: ${userPhone}
                         try {
                             cartActionData = JSON.parse(functionResult);
                         } catch (e) { }
+                    } else if (functionName === 'calculate_total') {
+                        functionResult = await this.calculateTotal(functionArgs);
                     } else if (functionName === 'check_order_status') {
                         functionResult = await this.checkOrderStatus(functionArgs);
                     } else if (functionName === 'lookup_cep') {
