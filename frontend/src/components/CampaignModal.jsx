@@ -221,61 +221,73 @@ const CampaignModal = ({ customers, onClose }) => {
 
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-    const startCampaign = async () => {
-        setStep(3);
-        setProgress({ sent: 0, total: customers.length, failed: 0 });
-        setLogs([]);
-        let sentCount = 0;
-        let failedCount = 0;
+    const [scheduledAt, setScheduledAt] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-        for (let i = 0; i < customers.length; i++) {
-            if (isPaused) {
-                break;
-            }
+    // Replaces client-side loop with backend campaign creation
+    const handleCreateCampaign = async () => {
+        setIsSubmitting(true);
+        try {
+            // 1. Create a temporary group for this selection if needed, or pass IDs directly.
+            // For now, simpler to just create a 'Quick Campaign' and let backend handle or pass IDs.
+            // But Marketing Service expects a group_id. 
+            // So we'll first create a hidden group "Quick Select [Date]" -> Add Members -> Create Campaign.
 
-            const customer = customers[i];
-            const variation = variations[Math.floor(Math.random() * variations.length)];
-            const message = variation.replace('{name}', customer.name.split(' ')[0]);
+            // Step 1: Create Temp Group
+            const groupName = `Seleção Rápida ${new Date().toLocaleString()}`;
+            const groupRes = await fetch('/api/marketing/groups', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: groupName })
+            });
+            const groupData = await groupRes.json();
 
-            try {
-                const jitter = delay * 0.3;
-                const actualDelay = (delay * 1000) + (Math.random() * jitter * 2 * 1000) - (jitter * 1000);
+            if (!groupData.id) throw new Error("Falha ao criar grupo temporário");
 
-                setLogs(prev => [`[${new Date().toLocaleTimeString()}] Enviando para ${customer.name}...`, ...prev]);
+            // Step 2: Add Members
+            // We can do this in parallel or batch if backend supports it. Ideally backend supports batch add.
+            // Let's loop here or assumes backend has a bulk add endpoint. 
+            // Checking marketingRoutes.js... it has POST /groups/:id/members for single add.
+            // We need to loop here (it's fast) or create a bulk endpoint. looping is fine for < 100 users.
 
-                const res = await fetch(`${API_URL}/api/ai/send-message`, {
+            // To be safer and quicker, let's just loop sequentially or parallel limited.
+            const addPromises = customers.map(c =>
+                fetch(`/api/marketing/groups/${groupData.id}/members`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        phone: customer.phone,
-                        message: message,
-                        mediaUrl: imageUrl || null
-                    })
-                });
+                    body: JSON.stringify({ customerId: c.id })
+                })
+            );
+            await Promise.all(addPromises);
 
-                if (!res.ok) {
-                    const errorData = await res.json().catch(() => ({}));
-                    throw new Error(errorData.details || errorData.error || `Erro ${res.status}`);
-                }
+            // Step 3: Create Campaign
+            const payload = {
+                title: `Disparo Rápido - ${customers.length} clientes`,
+                targetGroupId: groupData.id,
+                messageTemplate: variations[0], // Use first variation as template for now
+                messageVariations: variations,
+                scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : new Date().toISOString(),
+                imageUrl: imageUrl
+            };
 
-                sentCount++;
-                setLogs(prev => [`[${new Date().toLocaleTimeString()}] ✅ Sucesso: ${customer.name}`, ...prev]);
+            const campRes = await fetch('/api/marketing/campaigns', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-            } catch (error) {
-                console.error(`Falha ao enviar para ${customer.name}:`, error);
-                failedCount++;
-                setLogs(prev => [`[${new Date().toLocaleTimeString()}] ❌ Erro: ${customer.name} - ${error.message}`, ...prev]);
+            if (campRes.ok) {
+                setStep(4); // Success step
+            } else {
+                throw new Error("Falha ao criar campanha");
             }
 
-            setProgress({ sent: sentCount, total: customers.length, failed: failedCount });
-
-            if (i < customers.length - 1) {
-                setLogs(prev => [`[Aguardando ${Math.round(delay)}s...]`, ...prev]);
-                await sleep(delay * 1000);
-            }
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao criar campanha: " + error.message);
+        } finally {
+            setIsSubmitting(false);
         }
-
-        setStep(4);
     };
 
     // AI Generation Modal Component moved outside
@@ -377,25 +389,47 @@ const CampaignModal = ({ customers, onClose }) => {
                                 </div>
                             </div>
 
-                            {/* Settings */}
-                            <div className="bg-stone-100 dark:bg-stone-800/50 p-4 rounded-xl">
+                            {/* Settings / Scheduling */}
+                            <div className="bg-stone-50 dark:bg-stone-800/50 p-4 rounded-xl border border-stone-200 dark:border-stone-700">
                                 <h3 className="font-bold text-sm text-stone-800 dark:text-stone-200 mb-3 flex items-center gap-2">
-                                    <Clock size={16} /> Configurações de Envio
+                                    <Clock size={16} /> Agendamento
                                 </h3>
-                                <div className="flex items-center gap-4">
-                                    <label className="text-sm text-stone-600 dark:text-stone-400 flex-1">
-                                        Intervalo entre mensagens (segundos):
-                                    </label>
+
+                                <div className="flex items-center gap-2 mb-2">
                                     <input
-                                        type="number"
-                                        min="5"
-                                        value={delay}
-                                        onChange={(e) => setDelay(parseInt(e.target.value))}
-                                        className="w-20 p-2 rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 text-center font-bold"
+                                        type="checkbox"
+                                        id="modalSchedule"
+                                        className="w-4 h-4 accent-italian-red"
+                                        checked={!!scheduledAt}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                const tomorrow = new Date();
+                                                tomorrow.setDate(tomorrow.getDate() + 1);
+                                                tomorrow.setHours(9, 0, 0, 0);
+                                                setScheduledAt(tomorrow.toISOString().slice(0, 16));
+                                            } else {
+                                                setScheduledAt('');
+                                            }
+                                        }}
                                     />
+                                    <label htmlFor="modalSchedule" className="text-sm font-medium text-stone-700 dark:text-stone-300">
+                                        Agendar envio?
+                                    </label>
                                 </div>
+
+                                {scheduledAt && (
+                                    <input
+                                        type="datetime-local"
+                                        className="w-full p-2 rounded-lg border border-stone-300 dark:border-stone-600 dark:bg-stone-900 mt-2"
+                                        value={scheduledAt}
+                                        onChange={(e) => setScheduledAt(e.target.value)}
+                                    />
+                                )}
+
                                 <p className="text-xs text-stone-500 mt-2">
-                                    Recomendado: Mínimo 10s. O sistema adicionará uma variação aleatória extra para parecer humano.
+                                    {scheduledAt
+                                        ? "A campanha será criada e enviada automaticamente na data selecionada."
+                                        : "O envio será iniciado imediatamente pelo servidor."}
                                 </p>
                             </div>
                         </div>
@@ -436,20 +470,18 @@ const CampaignModal = ({ customers, onClose }) => {
                             <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
                                 <Send size={32} />
                             </div>
-                            <h3 className="text-2xl font-bold text-stone-800 dark:text-stone-100 mb-2">Campanha Finalizada!</h3>
+                            <h3 className="text-xl font-bold text-stone-800 dark:text-stone-100 mb-2">
+                                {scheduledAt ? 'Campanha Agendada!' : 'Campanha Iniciada!'}
+                            </h3>
                             <p className="text-stone-600 dark:text-stone-400 max-w-sm mx-auto mb-6">
-                                O processo de envio foi concluído.
+                                {scheduledAt
+                                    ? `Sua campanha foi agendada para ${new Date(scheduledAt).toLocaleString()}.`
+                                    : "O servidor já começou a processar os envios. Você pode acompanhar o progresso na aba Marketing."}
                             </p>
-                            <div className="flex gap-4 text-sm font-bold">
-                                <div className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-4 py-2 rounded-lg border border-green-100 dark:border-green-800">
-                                    ✅ {progress.sent} Sucessos
-                                </div>
-                                {progress.failed > 0 && (
-                                    <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 px-4 py-2 rounded-lg border border-red-100 dark:border-red-800">
-                                        ❌ {progress.failed} Falhas
-                                    </div>
-                                )}
-                            </div>
+
+                            <button onClick={onClose} className="bg-italian-green text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700 transition-colors">
+                                Fechar
+                            </button>
                         </div>
                     )}
                 </div>
@@ -462,11 +494,12 @@ const CampaignModal = ({ customers, onClose }) => {
                                 Cancelar
                             </button>
                             <button
-                                onClick={startCampaign}
-                                disabled={variations.some(v => !v.trim())}
+                                onClick={handleCreateCampaign}
+                                disabled={variations.some(v => !v.trim()) || isSubmitting}
                                 className="flex-[2] py-2.5 rounded-lg bg-italian-green text-white font-bold text-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
                             >
-                                <Send size={18} /> Iniciar Disparos
+                                {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+                                {scheduledAt ? 'Agendar Campanha' : 'Iniciar Disparos'}
                             </button>
                         </>
                     )}
