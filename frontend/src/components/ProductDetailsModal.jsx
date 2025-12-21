@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Minus, Plus, Check } from 'lucide-react';
+import { X, Minus, Plus, Check, Ban } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 const ProductDetailsModal = ({ item, isOpen, onClose }) => {
@@ -161,31 +161,38 @@ const ProductDetailsModal = ({ item, isOpen, onClose }) => {
 
                 {/* Footer */}
                 <div className="p-4 sm:p-6 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/50 shrink-0">
-                    <div className="flex items-center justify-between gap-3 sm:gap-4">
-                        <div className="flex items-center gap-2 sm:gap-3 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 p-1">
+                    {item.paused ? (
+                        <div className="w-full bg-stone-200 dark:bg-stone-800 text-stone-500 dark:text-stone-400 py-3 sm:py-4 rounded-xl font-bold text-center text-base sm:text-lg flex items-center justify-center gap-2 cursor-not-allowed">
+                            <span>Produto Indisponível</span>
+                            <Ban size={20} />
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between gap-3 sm:gap-4">
+                            <div className="flex items-center gap-2 sm:gap-3 bg-white dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 p-1">
+                                <button
+                                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                    className="p-2 sm:p-3 text-stone-500 hover:text-italian-red transition-colors"
+                                >
+                                    <Minus size={18} className="sm:w-5 sm:h-5" />
+                                </button>
+                                <span className="text-lg sm:text-xl font-bold w-6 sm:w-8 text-center">{quantity}</span>
+                                <button
+                                    onClick={() => setQuantity(quantity + 1)}
+                                    className="p-2 sm:p-3 text-stone-500 hover:text-italian-green transition-colors"
+                                >
+                                    <Plus size={18} className="sm:w-5 sm:h-5" />
+                                </button>
+                            </div>
+
                             <button
-                                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                className="p-2 sm:p-3 text-stone-500 hover:text-italian-red transition-colors"
+                                onClick={handleAddToCart}
+                                className="flex-1 bg-italian-green hover:bg-green-700 text-white py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-lg shadow-green-900/20 transition-all flex items-center justify-between px-4 sm:px-6"
                             >
-                                <Minus size={18} className="sm:w-5 sm:h-5" />
-                            </button>
-                            <span className="text-lg sm:text-xl font-bold w-6 sm:w-8 text-center">{quantity}</span>
-                            <button
-                                onClick={() => setQuantity(quantity + 1)}
-                                className="p-2 sm:p-3 text-stone-500 hover:text-italian-green transition-colors"
-                            >
-                                <Plus size={18} className="sm:w-5 sm:h-5" />
+                                <span>Adicionar</span>
+                                <span>R$ {finalPrice.toFixed(2)}</span>
                             </button>
                         </div>
-
-                        <button
-                            onClick={handleAddToCart}
-                            className="flex-1 bg-italian-green hover:bg-green-700 text-white py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-lg shadow-green-900/20 transition-all flex items-center justify-between px-4 sm:px-6"
-                        >
-                            <span>Adicionar</span>
-                            <span>R$ {finalPrice.toFixed(2)}</span>
-                        </button>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>
