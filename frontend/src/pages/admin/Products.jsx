@@ -222,9 +222,13 @@ const Products = () => {
                                                         R$ {product.price.toFixed(2)}
                                                     </td>
                                                     <td className="px-6 py-3 text-center">
-                                                        <input type="checkbox" checked={product.paused || false}
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={product.paused || false}
                                                             onChange={(e) => handlePauseToggle(product.id, e.target.checked)}
-                                                            className="form-checkbox h-5 w-5 text-italian-red" />
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="w-5 h-5 cursor-pointer accent-red-600 rounded"
+                                                        />
                                                     </td>
                                                     <td className="px-6 py-3 text-right">
                                                         <div className="flex items-center justify-end gap-2">
