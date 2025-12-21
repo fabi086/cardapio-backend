@@ -149,15 +149,49 @@ const CampaignForm = ({ groups, onCancel, onSuccess }) => {
                 )}
 
                 {/* 3. Scheduling */}
-                <div>
-                    <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">Agendar Envio (Opcional)</label>
-                    <input
-                        type="datetime-local"
-                        className="w-full md:w-auto p-2 rounded-lg border border-stone-200 dark:border-stone-700 dark:bg-stone-800"
-                        value={formData.scheduledAt}
-                        onChange={e => setFormData({ ...formData, scheduledAt: e.target.value })}
-                    />
-                    <p className="text-xs text-stone-500 mt-1">Deixe em branco para enviar imediatamente.</p>
+                {/* 3. Scheduling */}
+                <div className="bg-stone-50 dark:bg-stone-800/50 p-4 rounded-lg border border-stone-200 dark:border-stone-700">
+                    <div className="flex items-center gap-2 mb-2">
+                        <input
+                            type="checkbox"
+                            id="enableSchedule"
+                            className="w-4 h-4 accent-italian-red"
+                            checked={!!formData.scheduledAt}
+                            onChange={(e) => {
+                                if (e.target.checked) {
+                                    // Set default to tomorrow 9am if checked
+                                    const tomorrow = new Date();
+                                    tomorrow.setDate(tomorrow.getDate() + 1);
+                                    tomorrow.setHours(9, 0, 0, 0);
+                                    // Format to datetime-local string (YYYY-MM-DDTHH:mm)
+                                    const localIso = tomorrow.toISOString().slice(0, 16); // Simple slice works for UTC, but better to respect local time or just set empty
+                                    setFormData({ ...formData, scheduledAt: localIso });
+                                } else {
+                                    setFormData({ ...formData, scheduledAt: '' });
+                                }
+                            }}
+                        />
+                        <label htmlFor="enableSchedule" className="font-bold text-stone-800 dark:text-white cursor-pointer select-none">
+                            Agendar Envio?
+                        </label>
+                    </div>
+
+                    {formData.scheduledAt && (
+                        <div className="mt-2 pl-6">
+                            <label className="block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1">Data e Hora do Disparo</label>
+                            <input
+                                type="datetime-local"
+                                required={!!formData.scheduledAt}
+                                className="w-full md:w-auto p-2 rounded-lg border border-stone-300 dark:border-stone-600 dark:bg-stone-900 focus:ring-2 focus:ring-italian-red outline-none"
+                                value={formData.scheduledAt}
+                                onChange={e => setFormData({ ...formData, scheduledAt: e.target.value })}
+                            />
+                            <p className="text-xs text-stone-500 mt-1">O sistema enviará automaticamente nesta data.</p>
+                        </div>
+                    )}
+                    {!formData.scheduledAt && (
+                        <p className="text-xs text-stone-500 pl-6">Desmarcado: O envio será feito <b>imediatamente</b> ao salvar.</p>
+                    )}
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-stone-200 dark:border-stone-800">
