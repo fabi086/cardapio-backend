@@ -213,7 +213,7 @@ class AIService {
             }
 
             // Filter out stock items
-            const products = productsData.filter(p => !p.track_stock || p.stock_quantity > 0);
+            const products = productsData.filter(p => (!p.track_stock || p.stock_quantity > 0) && !p.paused);
 
             logToFile(`Query success. Found ${products ? products.length : 0} items (after stock filter).`);
 

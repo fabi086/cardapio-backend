@@ -77,6 +77,17 @@ const Products = () => {
         }
     };
 
+    const handlePauseToggle = async (productId, paused) => {
+        try {
+            await supabase.from('products').update({ paused }).eq('id', productId);
+            // Update local state
+            setProducts(products.map(p => p.id === productId ? { ...p, paused } : p));
+        } catch (error) {
+            console.error('Error updating pause status:', error);
+            alert('Erro ao atualizar status de pausa');
+        }
+    };
+
     const toggleCategory = (categoryId) => {
         setExpandedCategories(prev => ({
             ...prev,
@@ -156,6 +167,7 @@ const Products = () => {
                                                 <th className="px-6 py-3">Nome</th>
                                                 <th className="px-6 py-3 hidden lg:table-cell">Estoque</th>
                                                 <th className="px-6 py-3">Preço</th>
+                                                <th className="px-6 py-3">Pausado</th>
                                                 <th className="px-6 py-3 text-right">Ações</th>
                                             </tr>
                                         </thead>
@@ -193,10 +205,10 @@ const Products = () => {
                                                         ) : (
                                                             <div className="flex items-center gap-2">
                                                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${product.stock_quantity <= 0
-                                                                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                                                        : product.stock_quantity <= (product.low_stock_alert || 5)
-                                                                            ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                                                                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                                                    : product.stock_quantity <= (product.low_stock_alert || 5)
+                                                                        ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                                                        : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                                                     }`}>
                                                                     {product.stock_quantity} un
                                                                 </span>
@@ -208,6 +220,11 @@ const Products = () => {
                                                     </td>
                                                     <td className="px-6 py-3 text-stone-600 dark:text-stone-400">
                                                         R$ {product.price.toFixed(2)}
+                                                    </td>
+                                                    <td className="px-6 py-3 text-center">
+                                                        <input type="checkbox" checked={product.paused || false}
+                                                            onChange={(e) => handlePauseToggle(product.id, e.target.checked)}
+                                                            className="form-checkbox h-5 w-5 text-italian-red" />
                                                     </td>
                                                     <td className="px-6 py-3 text-right">
                                                         <div className="flex items-center justify-end gap-2">
