@@ -1329,6 +1329,7 @@ ${this.settings.system_prompt || 'Você é um atendente virtual simpático e pre
             let currentResponse = responseMessage;
             let loopCount = 0;
             const MAX_LOOPS = 5;
+            let cartActionData = null;
 
             // Loop while there are tool calls and we haven't hit the limit
             while (currentResponse.tool_calls && loopCount < MAX_LOOPS) {
@@ -1435,8 +1436,11 @@ ${this.settings.system_prompt || 'Você é um atendente virtual simpático e pre
             } catch (e) { }
 
             // Return error to user
+            const errorMsg = "⚠️ Erro ao processar mensagem: " + error.message + ". Tente novamente em alguns instantes.";
+            await this.sendMessage(remoteJid, errorMsg, channel);
+
             responses.push({
-                text: "⚠️ Erro ao processar mensagem: " + error.message + ". Verifique a API Key da OpenAI no painel.",
+                text: errorMsg,
                 role: 'assistant',
                 timestamp: new Date().toISOString()
             });
