@@ -120,10 +120,20 @@ const CustomerFormModal = ({ customer, onClose, onSave }) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const formatPhone = (val) => val.replace(/\D/g, '');
+    const formatPhone = (val) => {
+        let cleaned = val.replace(/\D/g, '');
+        // If it's a Brazilian mobile/landline without country code (10 or 11 digits), add 55
+        if (cleaned.length === 10 || cleaned.length === 11) {
+            cleaned = '55' + cleaned;
+        }
+        return cleaned;
+    };
 
     const handlePhoneChange = (e) => {
-        setFormData(prev => ({ ...prev, phone: formatPhone(e.target.value) }));
+        // Just keep digits for display, but normalization happens on submit or blur if we wanted.
+        // For now, let's keep simple digits in state, but normalize on save.
+        // Actually, better to just store digits.
+        setFormData(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '') }));
     };
 
     const handleSubmit = async (e) => {
@@ -135,9 +145,10 @@ const CustomerFormModal = ({ customer, onClose, onSave }) => {
 
         setLoading(true);
         try {
+            const normalizedPhone = formatPhone(formData.phone);
             await onSave({
                 ...formData,
-                phone: formatPhone(formData.phone)
+                phone: normalizedPhone
             });
             onClose();
         } catch (error) {
@@ -261,8 +272,8 @@ const CustomerFormModal = ({ customer, onClose, onSave }) => {
         <button
             onClick={() => setActiveTab(id)}
             className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === id
-                    ? 'bg-italian-red text-white shadow'
-                    : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
+                ? 'bg-italian-red text-white shadow'
+                : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
                 }`}
         >
             <Icon size={16} />
@@ -559,9 +570,9 @@ const CustomerFormModal = ({ customer, onClose, onSave }) => {
                                         <div key={product.name} className="flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-800 rounded-lg">
                                             <div className="flex items-center gap-3">
                                                 <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${idx === 0 ? 'bg-yellow-100 text-yellow-700' :
-                                                        idx === 1 ? 'bg-stone-200 text-stone-600' :
-                                                            idx === 2 ? 'bg-orange-100 text-orange-700' :
-                                                                'bg-stone-100 text-stone-500'
+                                                    idx === 1 ? 'bg-stone-200 text-stone-600' :
+                                                        idx === 2 ? 'bg-orange-100 text-orange-700' :
+                                                            'bg-stone-100 text-stone-500'
                                                     }`}>
                                                     {idx + 1}
                                                 </span>

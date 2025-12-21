@@ -2,6 +2,85 @@ import React, { useState, useEffect } from 'react';
 import { X, Send, Image as ImageIcon, Plus, Trash2, Clock, AlertTriangle, FileText, Sparkles, Loader2, Wand2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
+// AI Generation Modal Component
+const AiModal = ({ title, onClose, onGenerate, onApply, isImage, prompt, setPrompt, generatedMessages, isGenerating }) => (
+    <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4" onClick={onClose}>
+        <div className="bg-white dark:bg-stone-900 rounded-xl shadow-2xl w-full max-w-lg p-6 border border-stone-200 dark:border-stone-700" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
+                    <Sparkles className="text-purple-500" size={20} />
+                    {title}
+                </h3>
+                <button onClick={onClose} className="text-stone-400 hover:text-red-500">
+                    <X size={20} />
+                </button>
+            </div>
+
+            <div className="space-y-4">
+                <div>
+                    <label className="text-sm font-medium text-stone-700 dark:text-stone-300 mb-2 block">
+                        {isImage ? 'Descreva a imagem que você quer gerar:' : 'Descreva sua campanha:'}
+                    </label>
+                    <textarea
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder={isImage
+                            ? 'Ex: Uma pizza margherita deliciosa com tomates frescos...'
+                            : 'Ex: Promoção de pizza para o fim de semana, 20% de desconto...'
+                        }
+                        className="w-full p-3 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-sm focus:ring-2 focus:ring-purple-500 outline-none resize-none"
+                        rows="3"
+                    />
+                </div>
+
+                {/* Generated messages preview */}
+                {!isImage && generatedMessages.length > 0 && (
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium text-stone-700 dark:text-stone-300">
+                            Mensagens geradas:
+                        </label>
+                        <div className="max-h-48 overflow-y-auto space-y-2">
+                            {generatedMessages.map((msg, idx) => (
+                                <div key={idx} className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800 text-sm">
+                                    {msg}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex gap-3">
+                    <button
+                        onClick={onGenerate}
+                        disabled={isGenerating || !prompt.trim()}
+                        className="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {isGenerating ? (
+                            <>
+                                <Loader2 size={18} className="animate-spin" />
+                                Gerando...
+                            </>
+                        ) : (
+                            <>
+                                <Wand2 size={18} />
+                                {isImage ? 'Gerar Imagem' : 'Gerar Mensagens'}
+                            </>
+                        )}
+                    </button>
+                    {!isImage && generatedMessages.length > 0 && (
+                        <button
+                            onClick={onApply}
+                            className="flex-1 py-2.5 rounded-lg bg-italian-green text-white font-bold text-sm hover:bg-green-700 flex items-center justify-center gap-2"
+                        >
+                            ✓ Usar Estas
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+    </div>
+);
+
 const CampaignModal = ({ customers, onClose }) => {
     const [step, setStep] = useState(1); // 1: Compose, 2: Review, 3: Sending, 4: Results
     const [variations, setVariations] = useState(['Olá {name}! Confira nossas ofertas!']);
@@ -199,84 +278,8 @@ const CampaignModal = ({ customers, onClose }) => {
         setStep(4);
     };
 
-    // AI Generation Modal Component
-    const AiModal = ({ title, onClose, onGenerate, onApply, isImage }) => (
-        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-stone-900 rounded-xl shadow-2xl w-full max-w-lg p-6 border border-stone-200 dark:border-stone-700" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
-                        <Sparkles className="text-purple-500" size={20} />
-                        {title}
-                    </h3>
-                    <button onClick={onClose} className="text-stone-400 hover:text-red-500">
-                        <X size={20} />
-                    </button>
-                </div>
+    // AI Generation Modal Component moved outside
 
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-sm font-medium text-stone-700 dark:text-stone-300 mb-2 block">
-                            {isImage ? 'Descreva a imagem que você quer gerar:' : 'Descreva sua campanha:'}
-                        </label>
-                        <textarea
-                            value={aiPrompt}
-                            onChange={(e) => setAiPrompt(e.target.value)}
-                            placeholder={isImage
-                                ? 'Ex: Uma pizza margherita deliciosa com tomates frescos...'
-                                : 'Ex: Promoção de pizza para o fim de semana, 20% de desconto...'
-                            }
-                            className="w-full p-3 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-sm focus:ring-2 focus:ring-purple-500 outline-none resize-none"
-                            rows="3"
-                        />
-                    </div>
-
-                    {/* Generated messages preview */}
-                    {!isImage && generatedMessages.length > 0 && (
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-stone-700 dark:text-stone-300">
-                                Mensagens geradas:
-                            </label>
-                            <div className="max-h-48 overflow-y-auto space-y-2">
-                                {generatedMessages.map((msg, idx) => (
-                                    <div key={idx} className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800 text-sm">
-                                        {msg}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="flex gap-3">
-                        <button
-                            onClick={onGenerate}
-                            disabled={isGenerating || !aiPrompt.trim()}
-                            className="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            {isGenerating ? (
-                                <>
-                                    <Loader2 size={18} className="animate-spin" />
-                                    Gerando...
-                                </>
-                            ) : (
-                                <>
-                                    <Wand2 size={18} />
-                                    {isImage ? 'Gerar Imagem' : 'Gerar Mensagens'}
-                                </>
-                            )}
-                        </button>
-                        {!isImage && generatedMessages.length > 0 && (
-                            <button
-                                onClick={onApply}
-                                className="flex-1 py-2.5 rounded-lg bg-italian-green text-white font-bold text-sm hover:bg-green-700 flex items-center justify-center gap-2"
-                            >
-                                ✓ Usar Estas
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
 
     return (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -483,6 +486,10 @@ const CampaignModal = ({ customers, onClose }) => {
                     onGenerate={handleGenerateMessage}
                     onApply={handleApplyMessages}
                     isImage={false}
+                    prompt={aiPrompt}
+                    setPrompt={setAiPrompt}
+                    generatedMessages={generatedMessages}
+                    isGenerating={isGenerating}
                 />
             )}
 
@@ -493,6 +500,10 @@ const CampaignModal = ({ customers, onClose }) => {
                     onClose={() => setShowAiImageModal(false)}
                     onGenerate={handleGenerateImage}
                     isImage={true}
+                    prompt={aiPrompt}
+                    setPrompt={setAiPrompt}
+                    generatedMessages={generatedMessages}
+                    isGenerating={isGenerating}
                 />
             )}
         </div>

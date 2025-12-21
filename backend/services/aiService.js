@@ -126,6 +126,13 @@ class AIService {
                 });
             }
 
+            // Buscar endereços do cliente
+            const { data: addresses } = await supabase
+                .from('customer_addresses')
+                .select('*')
+                .eq('customer_id', customer.id)
+                .order('is_default', { ascending: false });
+
             // Buscar último pedido
             const { data: lastOrder } = await supabase
                 .from('orders')
@@ -145,6 +152,7 @@ class AIService {
                 number: customer.number,
                 neighborhood: customer.neighborhood,
                 city: customer.city,
+                addresses: addresses || [], // Retorna a lista de endereços
                 lastOrder: lastOrder ? {
                     orderNumber: lastOrder.order_number,
                     total: lastOrder.total,
@@ -288,7 +296,13 @@ class AIService {
                     }
 
                     log(`CEP ${cleanCep} found in zone: ${zone.name}, fee: ${zone.fee}`);
-                    return { fee: zone.fee, zone: zone.name, error: null };
+                    return {
+                        fee: zone.fee,
+                        zone: zone.name,
+                        estimated_time: zone.estimated_time,
+                        min_order: zone.min_order,
+                        error: null
+                    };
                 }
             }
 
@@ -336,6 +350,38 @@ class AIService {
                 log(`Customer updated: ${existing.id}`);
             }
 
+            // Tentar salvar/atualizar endereço na nova tabela também se dados fornecidos
+            if (street || address) {
+                const fullAddress = street
+                    ? `${street}, ${number}${complement ? ' - ' + complement : ''}, ${neighborhood}, ${city}/${state}`
+                    : address;
+
+                // Primeiro, desmarcar todos os endereços como padrão para este cliente
+                await supabase.from('customer_addresses')
+                    .update({ is_default: false })
+                    .eq('customer_id', existing.id);
+
+                // Inserir o novo endereço e marcá-lo como padrão
+                const { error: addrError } = await supabase
+                    .from('customer_addresses')
+                    .insert([{
+                        customer_id: existing.id,
+                        label: 'Atual',
+                        address: fullAddress,
+                        cep,
+                        street,
+                        number,
+                        complement,
+                        neighborhood,
+                        city,
+                        state,
+                        is_default: true // Marca este como o novo padrão
+                    }]);
+                if (addrError) {
+                    log(`Error saving customer address for existing customer: ${addrError.message}`);
+                }
+            }
+
             log(`Customer already exists: ${existing.id}`);
             return JSON.stringify({
                 success: true,
@@ -362,7 +408,7 @@ class AIService {
             .insert([{
                 name,
                 phone: formattedPhone,
-                address,
+                address, // Manter legado para compatibilidade
                 cep,
                 street,
                 number,
@@ -377,6 +423,31 @@ class AIService {
         if (error) {
             log(`Error registering customer: ${error.message}`);
             return JSON.stringify({ error: error.message });
+        }
+
+        // Salvar na tabela de endereços (Multi-endereços)
+        if (address || street) {
+            const fullAddress = street
+                ? `${street}, ${number}${complement ? ' - ' + complement : ''}, ${neighborhood}, ${city}/${state}`
+                : address;
+
+            const { error: addrError } = await supabase
+                .from('customer_addresses')
+                .insert([{
+                    customer_id: data.id,
+                    label: 'Casa', // Padrão inicial
+                    address: fullAddress,
+                    cep,
+                    street,
+                    number,
+                    complement,
+                    neighborhood,
+                    city,
+                    state,
+                    is_default: true
+                }]);
+
+            if (addrError) log(`Error saving customer address: ${addrError.message}`);
         }
 
         log(`Customer registered: ${data.id}`);

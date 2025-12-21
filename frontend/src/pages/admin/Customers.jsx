@@ -207,14 +207,22 @@ const Customers = () => {
                 const data = XLSX.utils.sheet_to_json(ws);
 
                 // Map fields (Support different column names)
-                const toInsert = data.map(row => ({
-                    name: row['Nome'] || row['nome'] || row['Name'],
-                    phone: String(row['Telefone'] || row['telefone'] || row['Phone'] || row['Celular']).replace(/\D/g, ''),
-                    address: row['Endereço'] || row['endereco'] || row['Address'],
-                    neighborhood: row['Bairro'] || row['bairro'],
-                    city: row['Cidade'] || row['cidade'],
-                    created_at: new Date()
-                })).filter(r => r.name && r.phone && r.phone.length >= 8);
+                const toInsert = data.map(row => {
+                    let phone = String(row['Telefone'] || row['telefone'] || row['Phone'] || row['Celular'] || '').replace(/\D/g, '');
+                    // Normalize Phone (Add 55 if missing)
+                    if (phone.length === 10 || phone.length === 11) {
+                        phone = '55' + phone;
+                    }
+
+                    return {
+                        name: row['Nome'] || row['nome'] || row['Name'],
+                        phone: phone,
+                        address: row['Endereço'] || row['endereco'] || row['Address'],
+                        neighborhood: row['Bairro'] || row['bairro'],
+                        city: row['Cidade'] || row['cidade'],
+                        created_at: new Date()
+                    };
+                }).filter(r => r.name && r.phone && r.phone.length >= 10);
 
                 // Bulk Insert
                 const { error } = await supabase.from('customers').insert(toInsert);
