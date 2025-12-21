@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { ShoppingBag, DollarSign, Package, Clock, Calendar, TrendingUp, ArrowRight, Filter, Users, Receipt, Award } from 'lucide-react';
+import { ShoppingBag, DollarSign, Package, Clock, Calendar, TrendingUp, ArrowRight, Filter, Users, Receipt, Award, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -141,6 +141,18 @@ const Dashboard = () => {
                 }
             }
 
+            // 5. Fetch Low Stock Products
+            const { data: stockProducts, error: stockError } = await supabase
+                .from('products')
+                .select('id, name, image_url, stock_quantity, low_stock_alert')
+                .eq('track_stock', true)
+                .order('stock_quantity', { ascending: true });
+
+            let lowStockProducts = [];
+            if (!stockError && stockProducts) {
+                lowStockProducts = stockProducts.filter(p => p.stock_quantity <= (p.low_stock_alert || 5));
+            }
+
             setStats({
                 totalOrders,
                 completedOrders: completedOrders.length,
@@ -148,7 +160,8 @@ const Dashboard = () => {
                 activeProducts: activeProducts || 0,
                 pendingOrders,
                 avgTicket,
-                totalCustomers: totalCustomers || 0
+                totalCustomers: totalCustomers || 0,
+                lowStockProducts
             });
 
             setRecentOrders(orders.slice(0, 5));
@@ -312,96 +325,138 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Two Column Layout: Recent Orders + Top Products */}
+            {/* Two Column Layout: Recent Orders + Top Products + Low Stock */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Recent Orders */}
-                <div className="lg:col-span-2 bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-hidden">
-                    <div className="p-5 border-b border-stone-200 dark:border-stone-800 flex justify-between items-center">
-                        <h2 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
-                            <TrendingUp size={20} className="text-italian-red" />
-                            Pedidos Recentes
-                        </h2>
-                        <Link to="/admin/orders" className="text-sm text-italian-red font-bold hover:underline flex items-center gap-1">
-                            Ver Todos <ArrowRight size={16} />
-                        </Link>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 dark:text-stone-400 text-xs uppercase">
-                                    <th className="p-4 font-bold">ID</th>
-                                    <th className="p-4 font-bold">Cliente</th>
-                                    <th className="p-4 font-bold">Data</th>
-                                    <th className="p-4 font-bold">Status</th>
-                                    <th className="p-4 font-bold text-right">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                                {recentOrders.length > 0 ? (
-                                    recentOrders.map((order) => (
-                                        <tr key={order.id} className="hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors">
-                                            <td className="p-4 text-sm font-mono text-stone-600 dark:text-stone-400">
-                                                #{order.order_number ? order.order_number : order.id.toString().slice(0, 8)}
-                                            </td>
-                                            <td className="p-4 text-sm font-medium text-stone-800 dark:text-stone-200">{order.customer_name}</td>
-                                            <td className="p-4 text-sm text-stone-600 dark:text-stone-400">{formatDate(order.created_at)}</td>
-                                            <td className="p-4">
-                                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
-                                                    {getStatusLabel(order.status)}
-                                                </span>
-                                            </td>
-                                            <td className="p-4 text-sm font-bold text-right text-stone-800 dark:text-stone-200">{formatCurrency(order.total)}</td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="5" className="p-8 text-center text-stone-500 dark:text-stone-400">
-                                            Nenhum pedido encontrado neste período.
-                                        </td>
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-hidden">
+                        <div className="p-5 border-b border-stone-200 dark:border-stone-800 flex justify-between items-center">
+                            <h2 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
+                                <TrendingUp size={20} className="text-italian-red" />
+                                Pedidos Recentes
+                            </h2>
+                            <Link to="/admin/orders" className="text-sm text-italian-red font-bold hover:underline flex items-center gap-1">
+                                Ver Todos <ArrowRight size={16} />
+                            </Link>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-stone-50 dark:bg-stone-800/50 text-stone-500 dark:text-stone-400 text-xs uppercase">
+                                        <th className="p-4 font-bold">ID</th>
+                                        <th className="p-4 font-bold">Cliente</th>
+                                        <th className="p-4 font-bold">Data</th>
+                                        <th className="p-4 font-bold">Status</th>
+                                        <th className="p-4 font-bold text-right">Total</th>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                                    {recentOrders.length > 0 ? (
+                                        recentOrders.map((order) => (
+                                            <tr key={order.id} className="hover:bg-stone-50 dark:hover:bg-stone-800/30 transition-colors">
+                                                <td className="p-4 text-sm font-mono text-stone-600 dark:text-stone-400">
+                                                    #{order.order_number ? order.order_number : order.id.toString().slice(0, 8)}
+                                                </td>
+                                                <td className="p-4 text-sm font-medium text-stone-800 dark:text-stone-200">{order.customer_name}</td>
+                                                <td className="p-4 text-sm text-stone-600 dark:text-stone-400">{formatDate(order.created_at)}</td>
+                                                <td className="p-4">
+                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
+                                                        {getStatusLabel(order.status)}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 text-sm font-bold text-right text-stone-800 dark:text-stone-200">{formatCurrency(order.total)}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="5" className="p-8 text-center text-stone-500 dark:text-stone-400">
+                                                Nenhum pedido encontrado neste período.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
-                {/* Top Products */}
-                <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-hidden">
-                    <div className="p-5 border-b border-stone-200 dark:border-stone-800">
-                        <h2 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
-                            <Award size={20} className="text-yellow-500" />
-                            Mais Vendidos
-                        </h2>
-                        <p className="text-xs text-stone-400 mt-1">No período selecionado</p>
-                    </div>
-                    <div className="p-4">
-                        {topProducts.length > 0 ? (
-                            <div className="space-y-3">
-                                {topProducts.map((product, idx) => (
-                                    <div key={product.name} className="flex items-center gap-3">
-                                        <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold shrink-0 ${idx === 0 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                            idx === 1 ? 'bg-stone-200 text-stone-600 dark:bg-stone-700 dark:text-stone-300' :
-                                                idx === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                                    'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
-                                            }`}>
-                                            {idx + 1}
-                                        </span>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-stone-800 dark:text-stone-200 text-sm truncate">{product.name}</p>
-                                            <p className="text-xs text-stone-400">{formatCurrency(product.revenue)}</p>
-                                        </div>
-                                        <div className="text-right shrink-0">
-                                            <span className="text-sm font-bold text-italian-green">{product.quantity}x</span>
-                                        </div>
-                                    </div>
-                                ))}
+                <div className="flex flex-col gap-6">
+                    {/* Low Stock Alert Widget */}
+                    {stats.lowStockProducts && stats.lowStockProducts.length > 0 && (
+                        <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-red-200 dark:border-red-900/50 overflow-hidden">
+                            <div className="p-5 border-b border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10">
+                                <h2 className="text-lg font-bold text-red-700 dark:text-red-400 flex items-center gap-2">
+                                    <AlertTriangle size={20} />
+                                    Estoque Baixo
+                                </h2>
+                                <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-1">Precisa de reposição urgente</p>
                             </div>
-                        ) : (
-                            <div className="text-center text-stone-400 py-8">
-                                <Package className="mx-auto mb-2" size={32} />
-                                <p className="text-sm">Nenhum produto vendido neste período</p>
+                            <div className="p-4">
+                                <div className="space-y-3">
+                                    {stats.lowStockProducts.map((product) => (
+                                        <div key={product.id} className="flex items-center justify-between p-2 hover:bg-stone-50 dark:hover:bg-stone-800/50 rounded-lg transition-colors">
+                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                <div className="w-8 h-8 rounded-md bg-stone-200 shrink-0">
+                                                    <img src={product.image_url} alt="" className="w-full h-full object-cover rounded-md" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-medium text-stone-800 dark:text-stone-200 text-sm truncate">{product.name}</p>
+                                                    <p className="text-xs text-stone-500">Mínimo: {product.low_stock_alert}</p>
+                                                </div>
+                                            </div>
+                                            <span className="px-2 py-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs font-bold rounded-full">
+                                                {product.stock_quantity} un
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-stone-100 dark:border-stone-800 text-center">
+                                    <Link to="/admin/products" className="text-sm text-red-600 font-bold hover:underline">
+                                        Gerenciar Estoque
+                                    </Link>
+                                </div>
                             </div>
-                        )}
+                        </div>
+                    )}
+
+                    {/* Top Products */}
+                    <div className="bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-800 overflow-hidden">
+                        <div className="p-5 border-b border-stone-200 dark:border-stone-800">
+                            <h2 className="text-lg font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
+                                <Award size={20} className="text-yellow-500" />
+                                Mais Vendidos
+                            </h2>
+                            <p className="text-xs text-stone-400 mt-1">No período selecionado</p>
+                        </div>
+                        <div className="p-4">
+                            {topProducts.length > 0 ? (
+                                <div className="space-y-3">
+                                    {topProducts.map((product, idx) => (
+                                        <div key={product.name} className="flex items-center gap-3">
+                                            <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold shrink-0 ${idx === 0 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                                                idx === 1 ? 'bg-stone-200 text-stone-600 dark:bg-stone-700 dark:text-stone-300' :
+                                                    idx === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                                                        'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'
+                                                }`}>
+                                                {idx + 1}
+                                            </span>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-stone-800 dark:text-stone-200 text-sm truncate">{product.name}</p>
+                                                <p className="text-xs text-stone-400">{formatCurrency(product.revenue)}</p>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <span className="text-sm font-bold text-italian-green">{product.quantity}x</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center text-stone-400 py-8">
+                                    <Package className="mx-auto mb-2" size={32} />
+                                    <p className="text-sm">Nenhum produto vendido neste período</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
