@@ -48,7 +48,7 @@ const ClientGroupManager = ({ groups, onGroupCreated, onRefresh }) => {
                 .from('customers')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(50); // Initial limit, could implement pagination
+                .limit(50);
 
             if (searchQuery) {
                 query = query.ilike('name', `% ${ searchQuery }% `);
@@ -63,6 +63,7 @@ const ClientGroupManager = ({ groups, onGroupCreated, onRefresh }) => {
             setIsLoadingCustomers(false);
         }
     };
+
 
     useEffect(() => {
         if (viewMode === 'customers') {
@@ -206,8 +207,8 @@ return (
                                 key={group.id}
                                 onClick={() => setSelectedGroup(group)}
                                 className={`w-full text-left p-3 rounded-lg transition-colors flex justify-between items-center ${selectedGroup?.id === group.id
-                                        ? 'bg-red-50 dark:bg-red-900/20 text-italian-red border border-red-100'
-                                        : 'hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300'
+                                    ? 'bg-red-50 dark:bg-red-900/20 text-italian-red border border-red-100'
+                                    : 'hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300'
                                     }`}
                             >
                                 <span className="font-medium">{group.name}</span>
