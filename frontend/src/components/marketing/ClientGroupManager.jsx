@@ -58,15 +58,27 @@ const ClientGroupManager = ({ groups, onGroupCreated, onRefresh }) => {
         }
     };
 
-    const searchCustomers = async (term) => {
-        if (term.length < 3) return;
-        const { data } = await supabase
+    const searchCustomers = async (term = '') => {
+        let query = supabase
             .from('customers')
             .select('id, name, phone')
-            .ilike('name', `%${term}%`)
-            .limit(5);
+            .limit(10);
+
+        if (term && term.trim()) {
+            query = query.ilike('name', `%${term}%`);
+        } else {
+            query = query.order('created_at', { ascending: false });
+        }
+
+        const { data, error } = await query;
+        if (error) console.error('Error fetching customers:', error);
         setSearchResults(data || []);
     };
+
+    // Load initial suggestions
+    useEffect(() => {
+        searchCustomers('');
+    }, []);
 
     const addMember = async (customerId) => {
         if (!selectedGroup) return;
@@ -155,7 +167,7 @@ const ClientGroupManager = ({ groups, onGroupCreated, onRefresh }) => {
                                         searchCustomers(e.target.value);
                                     }}
                                 />
-                                {searchResults.length > 0 && customerSearch && (
+                                {searchResults.length > 0 && (
                                     <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
                                         {searchResults.map(customer => (
                                             <button
