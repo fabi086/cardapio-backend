@@ -20,8 +20,10 @@ const Marketing = () => {
             ]);
             const campData = await campRes.json();
             const groupData = await groupRes.json();
-            setCampaigns(campData || []);
-            setGroups(groupData || []);
+
+            // Ensure data is array before setting state to prevent UI crash
+            setCampaigns(Array.isArray(campData) ? campData : []);
+            setGroups(Array.isArray(groupData) ? groupData : []);
         } catch (e) {
             console.error(e);
         } finally {
