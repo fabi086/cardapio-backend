@@ -50,12 +50,20 @@ const CampaignForm = ({ groups, onCancel, onSuccess, initialData }) => {
             if (res.ok) {
                 onSuccess();
             } else {
-                const err = await res.json();
-                alert('Erro ao salvar campanha: ' + (err.error || 'Erro desconhecido'));
+                const text = await res.text();
+                let errMsg = 'Erro desconhecido';
+                try {
+                    const err = JSON.parse(text);
+                    errMsg = err.error || JSON.stringify(err);
+                } catch (e) {
+                    errMsg = text.substring(0, 100); // Show start of html/text
+                }
+                alert('Erro ao salvar campanha: ' + errMsg);
+                console.error('Server Error:', text);
             }
         } catch (err) {
             console.error(err);
-            alert('Erro de conexão');
+            alert('Erro de conexão: ' + err.message);
         } finally {
             setLoading(false);
         }
