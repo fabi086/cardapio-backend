@@ -60,6 +60,22 @@ class MarketingService {
         return data.map(item => item.customers);
     }
 
+    async getCustomers(limit = 50, search = '') {
+        let query = this.supabase
+            .from('customers')
+            .select('id, name, phone, created_at')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+        if (search) {
+            query = query.ilike('name', `%${search}%`);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return data;
+    }
+
     // --- CAMPANHAS ---
 
     async createCampaign({ title, messageTemplate, messageVariations, imageUrl, targetGroupId, scheduledAt }) {

@@ -230,13 +230,21 @@ const CartModal = () => {
                                 </div>
                             </div>
 
-                            <button
-                                className="w-full text-white py-3 rounded-xl font-bold text-lg shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]"
-                                onClick={() => setIsCheckoutOpen(true)}
-                                style={{ backgroundColor: settings.button_color }}
-                            >
-                                Finalizar Pedido
-                            </button>
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    className="w-full bg-transparent border border-stone-300 dark:border-stone-600 text-stone-600 dark:text-stone-300 py-3 rounded-xl font-bold text-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition-all"
+                                    onClick={() => setIsCartOpen(false)}
+                                >
+                                    Continuar Comprando
+                                </button>
+                                <button
+                                    className="w-full text-white py-3 rounded-xl font-bold text-lg shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                                    onClick={() => setIsCheckoutOpen(true)}
+                                    style={{ backgroundColor: settings.button_color }}
+                                >
+                                    Finalizar Pedido
+                                </button>
+                            </div>
                         </div>
                     )}
                 </motion.div>

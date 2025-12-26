@@ -4,6 +4,17 @@ const router = express.Router();
 // Helper to get service
 const getService = (req) => req.app.locals.marketingService;
 
+// --- CLIENTES (Proxy para evitar RLS/Permissões no front) ---
+router.get('/customers', async (req, res) => {
+    try {
+        const { limit, search } = req.query;
+        const customers = await getService(req).getCustomers(limit, search);
+        res.json(customers);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // --- GRUPOS ---
 
 router.get('/groups', async (req, res) => {

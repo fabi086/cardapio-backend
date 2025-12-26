@@ -1520,14 +1520,31 @@ ${this.settings.system_prompt || 'Você é um atendente virtual simpático e pre
         return responses;
     }
 
-    async sendMessage(remoteJid, message, channel = 'whatsapp', mediaUrl = null) {
+    async sendMessage(remoteJid, message, channel = 'whatsapp', mediaUrl = null, action = null) {
         // Standardize Phone Number: Ensure it starts with country code (55 for Brazil default)
         let cleanNumber = remoteJid.replace(/\D/g, '');
         if (cleanNumber.length >= 10 && cleanNumber.length <= 11) {
             cleanNumber = '55' + cleanNumber;
         }
 
-        console.log(`Sending message to ${cleanNumber}@s.whatsapp.net:`, message, mediaUrl ? `(with media)` : '');
+        console.log(`Sending message to ${cleanNumber} (Channel: ${channel}):`, message, mediaUrl ? `(with media)` : '');
+
+        // --- WEB CHANNEL HANDLING ---
+        if (channel === 'web') {
+            // For web, we just return the object so the frontend can display it.
+            // We don't need to call Evolution API because the web client polls/receives the response directly from the API response of /chat or /poll
+            console.log('Web channel detected, returning message directly.');
+
+            // If we have an action (like add_to_cart), we pass it along
+            return {
+                success: true,
+                text: message,
+                mediaUrl,
+                action
+            };
+        }
+
+        // --- WHATSAPP CHANNEL HANDLING (Evolution API) ---
         const fs = require('fs');
         const path = require('path');
         const logFile = process.env.VERCEL ? path.join('/tmp', 'debug_memory.log') : path.join(__dirname, '../debug_memory.log');
@@ -1598,20 +1615,14 @@ ${this.settings.system_prompt || 'Você é um atendente virtual simpático e pre
                 status: error.response?.status,
                 responseData: error.response?.data || 'No response data',
                 remoteJid,
-                cleanNumber
+                channel
             };
-
-            console.error('Error sending message:', JSON.stringify(errorDetails, null, 2));
-            this.logToDb('error', 'Failed to send message', errorDetails);
-
-            try {
-                fs.appendFileSync(logFile, `${new Date().toISOString()} - ERROR SENDING: ${JSON.stringify(errorDetails)}\n`);
-            } catch (e) { }
-
-            // Lançar o erro para que o endpoint possa capturá-lo
-            throw new Error(`Erro ao enviar mensagem: ${error.response?.data?.message || error.response?.data?.error || error.message}`);
+            console.error('Error sending message:', errorDetails);
+            this.logToDb('error', 'Message Send Failed', errorDetails);
+            return { success: false, error: error.message };
         }
     }
+
 
 
     async sendNotification(phone, status, orderId) {
