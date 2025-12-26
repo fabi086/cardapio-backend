@@ -159,9 +159,21 @@ class MarketingService {
             throw new Error('Campanha já processada ou em andamento não pode ser editada completamente.');
         }
 
+        // Map camelCase to snake_case for DB
+        const dbUpdates = {};
+        if (updates.title !== undefined) dbUpdates.title = updates.title;
+        if (updates.messageTemplate !== undefined) dbUpdates.message_template = updates.messageTemplate;
+        if (updates.messageVariations !== undefined) dbUpdates.message_variations = updates.messageVariations;
+        if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl;
+        if (updates.targetGroupId !== undefined) dbUpdates.target_group_id = updates.targetGroupId;
+        if (updates.scheduledAt !== undefined) dbUpdates.scheduled_at = updates.scheduledAt;
+
+        // If no valid fields to update, return early or throw
+        if (Object.keys(dbUpdates).length === 0) return campaign;
+
         const { data, error } = await this.supabase
             .from('campaigns')
-            .update(updates)
+            .update(dbUpdates)
             .eq('id', campaignId)
             .select()
             .single();
