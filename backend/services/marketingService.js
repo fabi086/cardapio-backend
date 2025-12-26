@@ -61,6 +61,7 @@ class MarketingService {
     }
 
     async getCustomers(limit = 50, search = '') {
+        console.log(`[MarketingService] Fetching customers... limit=${limit} search='${search}'`);
         let query = this.supabase
             .from('customers')
             .select('id, name, phone, created_at')
@@ -72,7 +73,11 @@ class MarketingService {
         }
 
         const { data, error } = await query;
-        if (error) throw error;
+        if (error) {
+            console.error('[MarketingService] Supabase Error:', error);
+            throw error;
+        }
+        console.log(`[MarketingService] Success, returned ${data ? data.length : 0} rows`);
         return data;
     }
 

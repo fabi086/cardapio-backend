@@ -8,9 +8,12 @@ const getService = (req) => req.app.locals.marketingService;
 router.get('/customers', async (req, res) => {
     try {
         const { limit, search } = req.query;
+        console.log(`[MarketingRoute] GET /customers limit=${limit} search=${search}`);
         const customers = await getService(req).getCustomers(limit, search);
+        console.log(`[MarketingRoute] Found ${customers.length} customers`);
         res.json(customers);
     } catch (err) {
+        console.error('[MarketingRoute] Error:', err);
         res.status(500).json({ error: err.message });
     }
 });

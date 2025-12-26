@@ -59,6 +59,7 @@ const ClientGroupManager = ({ groups, onGroupCreated, onRefresh }) => {
             }
         } catch (e) {
             console.error('Error loading customers:', e);
+            alert('Erro ao carregar clientes. Verifique o console.');
             setAllCustomers([]); // Fallback to empty
         } finally {
             setIsLoadingCustomers(false);
@@ -66,10 +67,8 @@ const ClientGroupManager = ({ groups, onGroupCreated, onRefresh }) => {
     };
 
     useEffect(() => {
-        if (viewMode === 'customers') {
-            loadAllCustomers();
-        }
-    }, [viewMode, searchQuery]);
+        loadAllCustomers();
+    }, [searchQuery]); // Load on mount and search change. Independent of viewMode so we have the count.
 
     const handleCreateGroup = async (e) => {
         e.preventDefault();
@@ -181,7 +180,7 @@ const ClientGroupManager = ({ groups, onGroupCreated, onRefresh }) => {
                     onClick={() => setViewMode('customers')}
                     className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 ${viewMode === 'customers' ? 'bg-white dark:bg-stone-700 shadow-sm text-italian-red' : 'text-stone-500'}`}
                 >
-                    <UserPlus size={16} /> Todos os Clientes
+                    <UserPlus size={16} /> Todos os Clientes ({allCustomers.length})
                 </button>
             </div>
 

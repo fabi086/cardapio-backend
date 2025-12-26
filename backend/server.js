@@ -37,8 +37,7 @@ const marketingRoutes = require('./routes/marketingRoutes'); // New Route
 
 // Initialize Services
 // 1. AI Service
-const AIService = require('./services/aiService');
-const aiService = new AIService();
+const aiService = require('./services/aiService');
 
 // 2. Marketing Service
 const MarketingService = require('./services/marketingService');
