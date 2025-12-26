@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Send, Calendar, Sparkles, X, Plus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Send, Calendar, Sparkles, X, Plus, UploadCloud, Image as ImageIcon } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
-const CampaignForm = ({ groups, onCancel, onSuccess }) => {
-    const [step, setStep] = useState(1);
+const CampaignForm = ({ groups, onCancel, onSuccess, initialData }) => {
     const [formData, setFormData] = useState({
         title: '',
         targetGroupId: '',
@@ -13,6 +13,20 @@ const CampaignForm = ({ groups, onCancel, onSuccess }) => {
     });
     const [loading, setLoading] = useState(false);
     const [generating, setGenerating] = useState(false);
+    const [uploading, setUploading] = useState(false);
+
+    useEffect(() => {
+        if (initialData) {
+            setFormData({
+                title: initialData.title || '',
+                targetGroupId: initialData.target_group_id || '',
+                messageTemplate: initialData.message_template || '',
+                messageVariations: initialData.message_variations || [],
+                scheduledAt: initialData.scheduled_at ? new Date(initialData.scheduled_at).toISOString().slice(0, 16) : '',
+                imageUrl: initialData.image_url || ''
+            });
+        }
+    }, [initialData]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -24,8 +38,11 @@ const CampaignForm = ({ groups, onCancel, onSuccess }) => {
                 scheduledAt: formData.scheduledAt ? new Date(formData.scheduledAt).toISOString() : new Date().toISOString()
             };
 
-            const res = await fetch('/api/marketing/campaigns', {
-                method: 'POST',
+            const url = initialData ? `/api/marketing/campaigns/${initialData.id}` : '/api/marketing/campaigns';
+            const method = initialData ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method: method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
@@ -33,13 +50,41 @@ const CampaignForm = ({ groups, onCancel, onSuccess }) => {
             if (res.ok) {
                 onSuccess();
             } else {
-                alert('Erro ao criar campanha');
+                const err = await res.json();
+                alert('Erro ao salvar campanha: ' + (err.error || 'Erro desconhecido'));
             }
         } catch (err) {
             console.error(err);
             alert('Erro de conexão');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `marketing/${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await supabase.storage
+                .from('menu-items') // Reusing existing public bucket
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data } = supabase.storage
+                .from('menu-items')
+                .getPublicUrl(fileName);
+
+            setFormData(prev => ({ ...prev, imageUrl: data.publicUrl }));
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            alert('Erro ao fazer upload da imagem.');
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -75,7 +120,7 @@ const CampaignForm = ({ groups, onCancel, onSuccess }) => {
     return (
         <div className="bg-white dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 p-6">
             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-stone-800 dark:text-white">Nova Campanha</h3>
+                <h3 className="text-xl font-bold text-stone-800 dark:text-white">{initialData ? 'Editar Campanha' : 'Nova Campanha'}</h3>
                 <button onClick={onCancel} className="text-stone-500 hover:text-stone-800"><X /></button>
             </div>
 
@@ -148,8 +193,58 @@ const CampaignForm = ({ groups, onCancel, onSuccess }) => {
                     </div>
                 )}
 
-                {/* 3. Scheduling */}
-                {/* 3. Scheduling */}
+                {/* 3. Image/Video Upload */}
+                <div className="bg-stone-50 dark:bg-stone-800/50 p-4 rounded-lg border border-stone-200 dark:border-stone-700">
+                    <label className="block text-sm font-bold text-stone-700 dark:text-white mb-2 flex items-center gap-2">
+                        <ImageIcon size={16} /> Mídia (Imagem/Vídeo)
+                    </label>
+
+                    <div className="flex gap-4 items-start flex-col md:flex-row">
+                        <div className="flex-1 w-full">
+                            <div className="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    placeholder="URL da imagem (opcional)"
+                                    className="flex-1 p-2 rounded border border-stone-200 dark:border-stone-700 dark:bg-stone-900 text-sm"
+                                    value={formData.imageUrl}
+                                    onChange={e => setFormData({ ...formData, imageUrl: e.target.value })}
+                                />
+                            </div>
+                            <div className="relative">
+                                <input
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    onChange={handleImageUpload}
+                                    className="hidden"
+                                    id="media-upload"
+                                    disabled={uploading}
+                                />
+                                <label
+                                    htmlFor="media-upload"
+                                    className={`flex items-center justify-center gap-2 p-2 border-2 border-dashed border-stone-300 dark:border-stone-600 rounded-lg cursor-pointer hover:border-italian-red hover:text-italian-red transition-colors text-sm text-stone-500 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                                >
+                                    <UploadCloud size={18} />
+                                    {uploading ? 'Enviando...' : 'Clique para fazer upload de arquivo'}
+                                </label>
+                            </div>
+                        </div>
+
+                        {formData.imageUrl && (
+                            <div className="w-24 h-24 relative bg-stone-200 dark:bg-stone-700 rounded-lg overflow-hidden border border-stone-300 dark:border-stone-600 shrink-0">
+                                <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.target.style.display = 'none'} />
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, imageUrl: '' })}
+                                    className="absolute top-0 right-0 p-1 bg-red-500 text-white rounded-bl-lg hover:bg-red-700"
+                                >
+                                    <X size={12} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 4. Scheduling */}
                 <div className="bg-stone-50 dark:bg-stone-800/50 p-4 rounded-lg border border-stone-200 dark:border-stone-700">
                     <div className="flex items-center gap-2 mb-2">
                         <input
@@ -163,8 +258,7 @@ const CampaignForm = ({ groups, onCancel, onSuccess }) => {
                                     const tomorrow = new Date();
                                     tomorrow.setDate(tomorrow.getDate() + 1);
                                     tomorrow.setHours(9, 0, 0, 0);
-                                    // Format to datetime-local string (YYYY-MM-DDTHH:mm)
-                                    const localIso = tomorrow.toISOString().slice(0, 16); // Simple slice works for UTC, but better to respect local time or just set empty
+                                    const localIso = tomorrow.toISOString().slice(0, 16);
                                     setFormData({ ...formData, scheduledAt: localIso });
                                 } else {
                                     setFormData({ ...formData, scheduledAt: '' });
@@ -208,7 +302,7 @@ const CampaignForm = ({ groups, onCancel, onSuccess }) => {
                         className="px-4 py-2 rounded-lg bg-italian-red text-white hover:bg-red-700 flex items-center gap-2"
                     >
                         {loading ? <span className="animate-spin">⌛</span> : <Send size={18} />}
-                        {formData.scheduledAt ? 'Agendar Campanha' : 'Enviar Agora'}
+                        {initialData ? 'Salvar Alterações' : (formData.scheduledAt ? 'Agendar Campanha' : 'Enviar Agora')}
                     </button>
                 </div>
 

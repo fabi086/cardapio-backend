@@ -110,6 +110,45 @@ router.post('/campaigns', async (req, res) => {
     }
 });
 
+
+router.delete('/campaigns/:id', async (req, res) => {
+    try {
+        await getService(req).deleteCampaign(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/campaigns/:id', async (req, res) => {
+    try {
+        const data = await getService(req).updateCampaign(req.params.id, req.body);
+        res.json(data);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update/Delete Groups
+router.put('/groups/:id', async (req, res) => {
+    try {
+        const { name } = req.body;
+        const group = await getService(req).updateGroup(req.params.id, name);
+        res.json(group);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/groups/:id', async (req, res) => {
+    try {
+        await getService(req).deleteGroup(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // AI Variations Generator Endpoint
 router.post('/generate-variations', async (req, res) => {
     try {

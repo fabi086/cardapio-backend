@@ -101,11 +101,71 @@ class MarketingService {
         return data;
     }
 
+    async updateGroup(groupId, name) {
+        const { data, error } = await this.supabase
+            .from('client_groups')
+            .update({ name })
+            .eq('id', groupId)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteGroup(groupId) {
+        // Members should cascade if configured, but let's be safe and try delete msg links if any?
+        // Usually groups are just linked. Let's try delete.
+        const { error } = await this.supabase
+            .from('client_groups')
+            .delete()
+            .eq('id', groupId);
+        if (error) throw error;
+        return true;
+    }
+
     async getCampaigns() {
         const { data, error } = await this.supabase
             .from('campaigns')
             .select('*')
             .order('created_at', { ascending: false });
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteCampaign(campaignId) {
+        // Prevent delete if processing?
+        const { data: campaign } = await this.supabase.from('campaigns').select('status').eq('id', campaignId).single();
+        if (campaign && campaign.status === 'processing') {
+            throw new Error('Não é possível excluir uma campanha em andamento.');
+        }
+
+        // Delete messages first if no cascade
+        await this.supabase.from('campaign_messages').delete().eq('campaign_id', campaignId);
+
+        const { error } = await this.supabase
+            .from('campaigns')
+            .delete()
+            .eq('id', campaignId);
+
+        if (error) throw error;
+        return true;
+    }
+
+    async updateCampaign(campaignId, updates) {
+        // Only allow update if scheduled or draft
+        const { data: campaign } = await this.supabase.from('campaigns').select('status').eq('id', campaignId).single();
+        if (campaign && (campaign.status === 'processing' || campaign.status === 'completed')) {
+            // Maybe allow minimal edits? For now block.
+            throw new Error('Campanha já processada ou em andamento não pode ser editada completamente.');
+        }
+
+        const { data, error } = await this.supabase
+            .from('campaigns')
+            .update(updates)
+            .eq('id', campaignId)
+            .select()
+            .single();
+
         if (error) throw error;
         return data;
     }

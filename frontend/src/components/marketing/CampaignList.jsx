@@ -88,9 +88,31 @@ const CampaignList = ({ campaigns, onRefresh, onEdit }) => {
 
                                 <div className="flex items-center gap-2">
                                     {/* Actions based on status */}
-                                    {campaign.status === 'draft' && (
-                                        <button className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg text-italian-red">
+                                    {/* Actions based on status */}
+                                    {(campaign.status === 'draft' || campaign.status === 'scheduled') && (
+                                        <button
+                                            onClick={() => onEdit(campaign)}
+                                            className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg text-blue-500"
+                                            title="Editar Campanha"
+                                        >
                                             <Edit2 size={18} />
+                                        </button>
+                                    )}
+
+                                    {(campaign.status === 'draft' || campaign.status === 'scheduled' || campaign.status === 'failed' || campaign.status === 'completed') && (
+                                        <button
+                                            onClick={() => {
+                                                if (confirm('Tem certeza que deseja excluir esta campanha?')) {
+                                                    fetch(`/api/marketing/campaigns/${campaign.id}`, { method: 'DELETE' })
+                                                        .then(res => {
+                                                            if (res.ok) onRefresh();
+                                                        });
+                                                }
+                                            }}
+                                            className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg text-red-500"
+                                            title="Excluir Campanha"
+                                        >
+                                            <Trash2 size={18} />
                                         </button>
                                     )}
                                 </div>

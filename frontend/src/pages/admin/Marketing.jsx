@@ -10,6 +10,7 @@ const Marketing = () => {
     const [campaigns, setCampaigns] = useState([]);
     const [groups, setGroups] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [editingCampaign, setEditingCampaign] = useState(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -87,9 +88,14 @@ const Marketing = () => {
                 {showNewCampaign ? (
                     <CampaignForm
                         groups={groups}
-                        onCancel={() => setShowNewCampaign(false)}
+                        initialData={editingCampaign}
+                        onCancel={() => {
+                            setShowNewCampaign(false);
+                            setEditingCampaign(null);
+                        }}
                         onSuccess={() => {
                             setShowNewCampaign(false);
+                            setEditingCampaign(null);
                             fetchData();
                         }}
                     />
@@ -97,6 +103,10 @@ const Marketing = () => {
                     <CampaignList
                         campaigns={campaigns}
                         onRefresh={fetchData}
+                        onEdit={(campaign) => {
+                            setEditingCampaign(campaign);
+                            setShowNewCampaign(true);
+                        }}
                     />
                 ) : (
                     <ClientGroupManager

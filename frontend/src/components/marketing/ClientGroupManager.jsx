@@ -209,16 +209,56 @@ const ClientGroupManager = ({ groups, onGroupCreated, onRefresh }) => {
 
                         <div className="overflow-y-auto flex-1 p-2 space-y-1">
                             {groups.map(group => (
-                                <button
+                                <div
                                     key={group.id}
-                                    onClick={() => setSelectedGroup(group)}
-                                    className={`w-full text-left p-3 rounded-lg transition-colors flex justify-between items-center ${selectedGroup?.id === group.id
+                                    className={`w-full group flex justify-between items-center p-3 rounded-lg transition-colors cursor-pointer ${selectedGroup?.id === group.id
                                         ? 'bg-red-50 dark:bg-red-900/20 text-italian-red border border-red-100'
                                         : 'hover:bg-stone-50 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300'
                                         }`}
+                                    onClick={() => setSelectedGroup(group)}
                                 >
-                                    <span className="font-medium">{group.name}</span>
-                                </button>
+                                    <span className="font-medium truncate flex-1">{group.name}</span>
+
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const newName = prompt('Novo nome do grupo:', group.name);
+                                                if (newName && newName !== group.name) {
+                                                    fetch(`/api/marketing/groups/${group.id}`, {
+                                                        method: 'PUT',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ name: newName })
+                                                    }).then(res => {
+                                                        if (res.ok) onRefresh();
+                                                    });
+                                                }
+                                            }}
+                                            className="p-1.5 hover:bg-white rounded text-stone-400 hover:text-blue-500"
+                                            title="Renomear"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (confirm('Tem certeza que deseja excluir este grupo?')) {
+                                                    fetch(`/api/marketing/groups/${group.id}`, { method: 'DELETE' })
+                                                        .then(res => {
+                                                            if (res.ok) {
+                                                                onRefresh();
+                                                                if (selectedGroup?.id === group.id) setSelectedGroup(null);
+                                                            }
+                                                        });
+                                                }
+                                            }}
+                                            className="p-1.5 hover:bg-white rounded text-stone-400 hover:text-red-500"
+                                            title="Excluir"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                </div>
                             ))}
                         </div>
                     </div>
