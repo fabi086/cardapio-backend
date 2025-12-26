@@ -292,36 +292,57 @@ class MarketingService {
     async startCampaign(campaign) {
         console.log(`[Marketing] Starting campaign: ${campaign.title}`);
 
-        // 1. Update status to processing
-        await this.supabase.from('campaigns').update({ status: 'processing' }).eq('id', campaign.id);
+        try {
+            // 1. Update status to processing
+            await this.supabase.from('campaigns').update({ status: 'processing' }).eq('id', campaign.id);
 
-        // 2. Populate campaign_messages from group members
-        // Fetch members
-        const members = await this.getGroupMembers(campaign.target_group_id);
+            // 2. Populate campaign_messages from group members
+            // Fetch members
+            const members = await this.getGroupMembers(campaign.target_group_id);
 
-        if (!members || members.length === 0) {
-            console.log(`[Marketing] No members in group for campaign ${campaign.title}`);
-            await this.supabase.from('campaigns').update({ status: 'completed', completed_at: new Date() }).eq('id', campaign.id);
-            return;
+            if (!members || members.length === 0) {
+                console.log(`[Marketing] No members in group for campaign ${campaign.title}`);
+                await this.supabase.from('campaigns').update({ status: 'completed', completed_at: new Date() }).eq('id', campaign.id);
+                return;
+            }
+
+            // Create message entries
+            // Filter invalid phones first!
+            const validMembers = members.filter(m => m.phone && m.phone.length >= 8);
+            if (validMembers.length === 0) {
+                await this.supabase.from('campaigns').update({
+                    status: 'failed',
+                    completed_at: new Date(),
+                    // Store error in title or separate log? For now simple fail.
+                }).eq('id', campaign.id);
+                throw new Error('Grupo sem clientes com telefone válido');
+            }
+
+            const messagesToInsert = validMembers.map(member => ({
+                campaign_id: campaign.id,
+                customer_id: member.id,
+                phone: member.phone,
+                status: 'pending'
+            }));
+
+            // Batch insert (check limits, split if needed but usually okay for <1000)
+            const batchSize = 100;
+            for (let i = 0; i < messagesToInsert.length; i += batchSize) {
+                const batch = messagesToInsert.slice(i, i + batchSize);
+                const { error } = await this.supabase.from('campaign_messages').insert(batch);
+                if (error) throw error; // Throw to catch block
+            }
+
+            console.log(`[Marketing] Queued ${messagesToInsert.length} messages for campaign ${campaign.title}`);
+        } catch (err) {
+            console.error(`[Marketing] Failed to start campaign ${campaign.id}:`, err);
+            // Revert/Set status to failed so it doesn't get stuck
+            await this.supabase.from('campaigns').update({
+                status: 'failed',
+                // We don't have an error_column on campaigns table yet, but 'failed' status helps.
+                // Optionally could update description or similar? No, keep it simple.
+            }).eq('id', campaign.id);
         }
-
-        // Create message entries
-        const messagesToInsert = members.map(member => ({
-            campaign_id: campaign.id,
-            customer_id: member.id,
-            phone: member.phone,
-            status: 'pending'
-        }));
-
-        // Batch insert (check limits, split if needed but usually okay for <1000)
-        const batchSize = 100;
-        for (let i = 0; i < messagesToInsert.length; i += batchSize) {
-            const batch = messagesToInsert.slice(i, i + batchSize);
-            const { error } = await this.supabase.from('campaign_messages').insert(batch);
-            if (error) console.error('[Marketing] Error inserting messages:', error);
-        }
-
-        console.log(`[Marketing] Queued ${messagesToInsert.length} messages for campaign ${campaign.title}`);
     }
 
     async processMessageQueue() {
@@ -366,11 +387,12 @@ class MarketingService {
                 await this.aiService.sendMessage(jid, textToSend);
 
                 // If image exists, send it too
+                // If image exists, send it too
                 if (msg.campaigns.image_url) {
-                    // TODO: Send Media if supported by aiService. 
-                    // Assuming aiService.sendMessage defaults to text.
-                    // If we have sendMedia, call it.
-                    // Ignoring for MVP unless requested.
+                    // Pass image_url as mediaUrl (4th arg)
+                    await this.aiService.sendMessage(jid, textToSend, 'whatsapp', msg.campaigns.image_url);
+                } else {
+                    await this.aiService.sendMessage(jid, textToSend);
                 }
 
                 // 3. Mark as sent
