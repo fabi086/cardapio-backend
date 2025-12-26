@@ -104,7 +104,27 @@ router.post('/campaigns', async (req, res) => {
             targetGroupId,
             scheduledAt
         });
+
+        // Trigger processing immediately if scheduled for now (or past)
+        if (new Date(campaign.scheduled_at) <= new Date()) {
+            console.log(`[MarketingRoute] Triggering immediate processing for new campaign ${campaign.id}`);
+            // Fire and forget (hope Vercel keeps it alive long enough for at least one batch)
+            // Better to await to ensure at least 'startCampaign' runs
+            getService(req).processScheduledCampaigns().catch(console.error);
+        }
+
         res.json(campaign);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// CRON Endpoint for Vercel Cron or Manual Trigger
+router.get('/cron', async (req, res) => {
+    try {
+        console.log('[MarketingRoute] Manual Cron Triggered');
+        await getService(req).processScheduledCampaigns();
+        res.json({ success: true, message: 'Processing triggered' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -123,6 +143,13 @@ router.delete('/campaigns/:id', async (req, res) => {
 router.put('/campaigns/:id', async (req, res) => {
     try {
         const data = await getService(req).updateCampaign(req.params.id, req.body);
+
+        // Trigger processing immediately if scheduled for now
+        if (data.scheduled_at && new Date(data.scheduled_at) <= new Date()) {
+            console.log(`[MarketingRoute] Triggering immediate processing for updated campaign ${data.id}`);
+            getService(req).processScheduledCampaigns().catch(console.error);
+        }
+
         res.json(data);
     } catch (err) {
         res.status(500).json({ error: err.message });
