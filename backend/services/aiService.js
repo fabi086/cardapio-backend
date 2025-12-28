@@ -198,7 +198,7 @@ class AIService {
             // Build query
             let query = supabase
                 .from('products')
-                .select('id, name, description, price, category_id, track_stock, stock_quantity')
+                .select('id, name, description, price, category_id, track_stock, stock_quantity, paused')
                 .eq('is_available', true);
 
             // If category specified, filter by it
@@ -220,31 +220,49 @@ class AIService {
                 return JSON.stringify({ error: error.message });
             }
 
-            // Filter out stock items
+            // Filter out stock items and paused products
             const products = productsData.filter(p => (!p.track_stock || p.stock_quantity > 0) && !p.paused);
 
             logToFile(`Query success. Found ${products ? products.length : 0} items (after stock filter).`);
 
-            // If no category specified, return list of categories for user to choose
+            // If no category specified, show ALL products grouped by category
             if (!categoryName && categories && categories.length > 0) {
+                // Group products by category
+                const productsByCategory = {};
+
+                categories.forEach(cat => {
+                    const categoryProducts = products.filter(p => p.category_id === cat.id);
+                    if (categoryProducts.length > 0) {
+                        productsByCategory[cat.name] = categoryProducts.map(p => ({
+                            id: p.id,
+                            name: p.name,
+                            price: parseFloat(p.price).toFixed(2),
+                            description: p.description || ''
+                        }));
+                    }
+                });
+
                 return JSON.stringify({
-                    action: 'ask_category',
-                    categories: categories.map(c => c.name),
-                    message: 'Temos várias categorias! Qual você gostaria de ver?'
+                    type: 'full_menu',
+                    categories: productsByCategory,
+                    totalProducts: products.length,
+                    instruction: 'Format this menu by categories using emojis and line breaks for readability. Show category name in bold, then list products with name and price. NEVER mention products not in this list.'
                 });
             }
 
-            // Format products for WhatsApp-friendly display
+            // Format products for WhatsApp-friendly display (single category)
             const formattedProducts = products.map(p => ({
                 id: p.id,
                 name: p.name,
-                price: p.price,
-                description: p.description?.substring(0, 60) || ''
+                price: parseFloat(p.price).toFixed(2),
+                description: p.description || ''
             }));
 
             return JSON.stringify({
+                type: 'category_menu',
                 products: formattedProducts,
-                count: formattedProducts.length
+                count: formattedProducts.length,
+                instruction: 'Show these products in a clean list format. NEVER add products not in this list.'
             });
         } catch (err) {
             logToFile(`Unexpected Error: ${err.message}`);
@@ -1123,7 +1141,17 @@ ${this.settings.system_prompt || 'Você é um atendente virtual simpático e pre
 1. **ZERO ALUCINAÇÃO DE PREÇO:** NUNCA some valores de cabeça.
 2. **USE A CALCULADORA:** Antes de mostrar qualquer total para o cliente, OBRIGATORIAMENTE chame a função \`calculate_total\` com os itens do pedido. Use o valor que ela retornar.
 3. **ENDEREÇO NO FINAL:** Não peça o endereço no início. Deixe para pedir/confirmar APENAS quando o cliente disser que quer fechar o pedido.
-4. **CONSULTE O CARDÁPIO:** Nunca invente produtos. Use \`get_menu\` antes de sugerir.
+4. **CONSULTE O CARDÁPIO:** SEMPRE use \`get_menu\` antes de falar sobre produtos. NUNCA invente produtos, preços ou acompanhamentos.
+5. **CARDÁPIO FORMATADO:** Quando mostrar o cardápio, organize por categorias com emojis e quebras de linha. Exemplo:
+   
+   🍕 *PIZZAS*
+   • Pizza Margherita - R$ 45,00
+   • Pizza Calabresa - R$ 48,00
+   
+   🥤 *BEBIDAS*
+   • Coca-Cola 2L - R$ 10,00
+   
+6. **NUNCA OFEREÇA O QUE NÃO EXISTE:** Se um produto não está na lista retornada por \`get_menu\`, NÃO mencione. Se o cliente pedir algo que não existe, diga educadamente que não tem e sugira alternativas DO CARDÁPIO.
 
 🎭 PERSONALIDADE:
 - Amigo, simpático e casual (use emojis 🍕😄).
@@ -1137,7 +1165,8 @@ ${this.settings.system_prompt || 'Você é um atendente virtual simpático e pre
    - Pergunte o que o cliente quer comer/beber hoje. NÃO PEÇA ENDEREÇO AGORA.
 
 2. **MONTAGEM DO PEDIDO:**
-   - Use \`get_menu\` para ver opções.
+   - Use \`get_menu\` para ver opções (retorna produtos organizados por categoria).
+   - Mostre o cardápio formatado por categorias.
    - Adicione itens conforme o pedido.
    - SEMPRE pergunte observações ("Sem cebola?", "Ao ponto?").
 
@@ -1176,7 +1205,7 @@ ${this.settings.system_prompt || 'Você é um atendente virtual simpático e pre
                     type: "function",
                     function: {
                         name: "get_menu",
-                        description: "Retorna itens do cardápio. Se categoria não for especificada, retorna lista de categorias disponíveis. Sempre pergunte ao cliente qual categoria ele quer ver antes de mostrar produtos.",
+                        description: "Retorna o cardápio completo organizado por categorias (Pizzas, Bebidas, etc.) com nome e preço de cada produto. Se categoria específica for solicitada, retorna apenas produtos daquela categoria. SEMPRE use esta função antes de falar sobre produtos. NUNCA mencione produtos que não estejam na resposta desta função.",
                         parameters: {
                             type: "object",
                             properties: {
