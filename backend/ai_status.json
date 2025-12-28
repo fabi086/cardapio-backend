@@ -1,0 +1,42 @@
+{
+  "aiSettings": {
+    "isActive": true,
+    "hasEvolutionUrl": true,
+    "hasInstanceName": true,
+    "hasEvolutionKey": true,
+    "hasOpenAIKey": true,
+    "evolutionUrl": "https://api.fbmidias.site",
+    "instanceName": "cardapio"
+  },
+  "recentLogs": [
+    {
+      "level": "info",
+      "message": "Message Sent",
+      "created_at": "2025-12-28T22:56:23.538+00:00"
+    },
+    {
+      "level": "info",
+      "message": "Message Sent",
+      "created_at": "2025-12-28T22:55:29.124+00:00"
+    },
+    {
+      "level": "info",
+      "message": "Message Sent",
+      "created_at": "2025-12-28T22:55:25.169+00:00"
+    },
+    {
+      "level": "info",
+      "message": "Message Sent",
+      "created_at": "2025-12-28T22:55:22.805+00:00"
+    },
+    {
+      "level": "info",
+      "message": "Message Sent",
+      "created_at": "2025-12-28T22:55:18.163+00:00"
+    }
+  ],
+  "businessSettings": {
+    "whatsapp": "5511977966866"
+  },
+  "issues": []
+}

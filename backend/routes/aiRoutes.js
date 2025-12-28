@@ -10,20 +10,61 @@ const supabaseUrl = 'https://pluryiqzywfsovrcuhat.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsdXJ5aXF6eXdmc292cmN1aGF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNDc2NzMsImV4cCI6MjA3OTgyMzY3M30.qidjRUyB-_uspMzVAKEWGxuSHMCezAxZsHtN3IgxZqA';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Test endpoint to verify webhook is reachable
+router.get('/webhook-test', (req, res) => {
+    console.log('[WEBHOOK TEST] GET request received');
+    res.json({
+        success: true,
+        message: 'Webhook endpoint is reachable!',
+        timestamp: new Date().toISOString()
+    });
+});
+
+router.post('/webhook-test', (req, res) => {
+    console.log('[WEBHOOK TEST] POST request received');
+    console.log('Body:', JSON.stringify(req.body, null, 2));
+    res.json({
+        success: true,
+        message: 'Webhook test successful!',
+        receivedBody: req.body,
+        timestamp: new Date().toISOString()
+    });
+});
+
 // Webhook for Evolution API
 router.post('/webhook', async (req, res) => {
-    try {
-        const { data, sender } = req.body;
-        console.log('=== FULL WEBHOOK PAYLOAD ===');
-        console.log(JSON.stringify(req.body, null, 2));
-        console.log('=== END PAYLOAD ===');
+    const receivedAt = new Date().toISOString();
 
-        // Log to DB
+    try {
+        // Log EVERY request, even invalid ones
+        console.log(`\n${'='.repeat(60)}`);
+        console.log(`[WEBHOOK] Request received at ${receivedAt}`);
+        console.log(`[WEBHOOK] Headers:`, JSON.stringify(req.headers, null, 2));
+        console.log(`[WEBHOOK] Body:`, JSON.stringify(req.body, null, 2));
+        console.log('='.repeat(60) + '\n');
+
+        const { data, sender } = req.body;
+
+        // Save raw payload to database for debugging
+        await supabase.from('system_logs').insert({
+            level: 'info',
+            message: 'Webhook Raw Payload',
+            details: {
+                timestamp: receivedAt,
+                headers: req.headers,
+                body: req.body,
+                hasData: !!data,
+                hasSender: !!sender
+            }
+        });
+
+        // Log to DB using aiService
         aiService.logToDb('info', 'Webhook Received', {
             remoteJid: data?.key?.remoteJid,
             pushName: data?.pushName,
             messageType: data?.messageType,
-            hasBody: !!req.body
+            hasBody: !!req.body,
+            fromMe: data?.key?.fromMe
         });
 
         // Basic validation of Evolution API payload
@@ -52,11 +93,23 @@ router.post('/webhook', async (req, res) => {
                 base64: data.message?.base64 || data.base64,
                 messageType: data.messageType
             });
+
+            console.log('[WEBHOOK] Message processed successfully');
+        } else {
+            console.log('[WEBHOOK] Message ignored - fromMe or invalid structure');
+            aiService.logToDb('warning', 'Webhook Message Ignored', {
+                reason: !data ? 'no_data' : !data.key ? 'no_key' : 'from_me',
+                fromMe: data?.key?.fromMe
+            });
         }
 
         res.status(200).json({ success: true });
     } catch (error) {
-        console.error('Webhook error:', error);
+        console.error('[WEBHOOK ERROR]', error);
+        aiService.logToDb('error', 'Webhook Processing Error', {
+            error: error.message,
+            stack: error.stack
+        });
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
