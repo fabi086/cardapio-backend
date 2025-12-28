@@ -72,7 +72,20 @@ router.delete('/groups/:groupId/members/:customerId', async (req, res) => {
 router.get('/campaigns', async (req, res) => {
     try {
         const campaigns = await getService(req).getCampaigns();
-        res.json(campaigns);
+
+        // Enrich with stats for each campaign
+        const enrichedCampaigns = await Promise.all(
+            campaigns.map(async (c) => {
+                try {
+                    return await getService(req).getCampaignDetails(c.id);
+                } catch (err) {
+                    console.error(`Error getting details for campaign ${c.id}:`, err);
+                    return c; // Return basic data if details fail
+                }
+            })
+        );
+
+        res.json(enrichedCampaigns);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

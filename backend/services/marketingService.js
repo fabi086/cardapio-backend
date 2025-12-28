@@ -418,9 +418,31 @@ class MarketingService {
             }
         }
 
+
         // Update completed campaigns
         // Check if any campaign has 0 pending items but is still 'processing'
-        // This is expensive to check every time. Let's assume we do it lazily or user checks status.
+        const { data: processingCampaigns } = await this.supabase
+            .from('campaigns')
+            .select('id')
+            .eq('status', 'processing');
+
+        if (processingCampaigns && processingCampaigns.length > 0) {
+            for (const camp of processingCampaigns) {
+                const { count: pendingCount } = await this.supabase
+                    .from('campaign_messages')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('campaign_id', camp.id)
+                    .eq('status', 'pending');
+
+                if (pendingCount === 0) {
+                    console.log(`[Marketing] Campaign ${camp.id} completed (no pending messages)`);
+                    await this.supabase
+                        .from('campaigns')
+                        .update({ status: 'completed', completed_at: new Date() })
+                        .eq('id', camp.id);
+                }
+            }
+        }
     }
 }
 

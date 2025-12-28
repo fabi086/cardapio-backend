@@ -78,9 +78,29 @@ const CampaignList = ({ campaigns, onRefresh, onEdit }) => {
                                         {campaign.stats && (
                                             <>
                                                 <span>•</span>
-                                                <span>enviados: {campaign.stats.sent || 0}</span>
-                                                <span>•</span>
-                                                <span className="text-green-600 dark:text-green-400">vendas: {campaign.stats.salesCount || 0}</span>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-green-600 dark:text-green-400 font-medium">
+                                                        ✓ {campaign.stats.sent || 0} enviadas
+                                                    </span>
+                                                    {campaign.stats.failed > 0 && (
+                                                        <span className="text-red-600 dark:text-red-400 font-medium">
+                                                            ✗ {campaign.stats.failed} falhas
+                                                        </span>
+                                                    )}
+                                                    {campaign.stats.pending > 0 && (
+                                                        <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                                            ⏳ {campaign.stats.pending} pendentes
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {campaign.stats.salesCount > 0 && (
+                                                    <>
+                                                        <span>•</span>
+                                                        <span className="text-green-600 dark:text-green-400 font-semibold">
+                                                            💰 {campaign.stats.salesCount} vendas (R$ {campaign.stats.salesTotal})
+                                                        </span>
+                                                    </>
+                                                )}
                                             </>
                                         )}
                                     </div>
