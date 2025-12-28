@@ -143,6 +143,32 @@ router.get('/cron', async (req, res) => {
     }
 });
 
+// Pause a processing campaign
+router.post('/campaigns/:id/pause', async (req, res) => {
+    try {
+        const { data: campaign } = await getService(req).supabase
+            .from('campaigns')
+            .select('status')
+            .eq('id', req.params.id)
+            .single();
+
+        if (!campaign || campaign.status !== 'processing') {
+            return res.status(400).json({ error: 'Apenas campanhas em andamento podem ser pausadas' });
+        }
+
+        // Change status to 'scheduled' with current time so it won't auto-start
+        // Or create a new 'paused' status if you prefer
+        await getService(req).supabase
+            .from('campaigns')
+            .update({ status: 'scheduled' }) // Paused = scheduled but won't trigger until manually restarted
+            .eq('id', req.params.id);
+
+        res.json({ success: true, message: 'Campanha pausada' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 
 router.delete('/campaigns/:id', async (req, res) => {
     try {

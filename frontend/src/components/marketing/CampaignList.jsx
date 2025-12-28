@@ -107,11 +107,33 @@ const CampaignList = ({ campaigns, onRefresh, onEdit }) => {
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    {/* Actions based on status */}
-                                    {/* Actions based on status */}
-                                    {(campaign.status === 'draft' || campaign.status === 'scheduled') && (
+                                    {/* Pause button for processing campaigns */}
+                                    {campaign.status === 'processing' && (
                                         <button
-                                            onClick={() => onEdit(campaign)}
+                                            onClick={async () => {
+                                                if (confirm('Pausar o envio desta campanha? As mensagens pendentes não serão enviadas até você reativar.')) {
+                                                    const res = await fetch(`/api/marketing/campaigns/${campaign.id}/pause`, { method: 'POST' });
+                                                    if (res.ok) onRefresh();
+                                                }
+                                            }}
+                                            className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg text-yellow-500"
+                                            title="Pausar Campanha"
+                                        >
+                                            <Clock size={18} />
+                                        </button>
+                                    )}
+
+                                    {/* Edit button - allow for draft, scheduled, and processing (with warning) */}
+                                    {(campaign.status === 'draft' || campaign.status === 'scheduled' || campaign.status === 'processing') && (
+                                        <button
+                                            onClick={() => {
+                                                if (campaign.status === 'processing') {
+                                                    if (!confirm('Esta campanha está em andamento. Editar pode causar inconsistências. Deseja continuar?')) {
+                                                        return;
+                                                    }
+                                                }
+                                                onEdit(campaign);
+                                            }}
                                             className="p-2 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg text-blue-500"
                                             title="Editar Campanha"
                                         >
@@ -119,10 +141,15 @@ const CampaignList = ({ campaigns, onRefresh, onEdit }) => {
                                         </button>
                                     )}
 
-                                    {(campaign.status === 'draft' || campaign.status === 'scheduled' || campaign.status === 'failed' || campaign.status === 'completed') && (
+                                    {/* Delete button - allow for all except completed (with strong warning for processing) */}
+                                    {campaign.status !== 'completed' && (
                                         <button
                                             onClick={() => {
-                                                if (confirm('Tem certeza que deseja excluir esta campanha?')) {
+                                                let confirmMsg = 'Tem certeza que deseja excluir esta campanha?';
+                                                if (campaign.status === 'processing') {
+                                                    confirmMsg = 'ATENÇÃO: Esta campanha está em andamento! Excluir irá cancelar o envio das mensagens pendentes. Tem certeza?';
+                                                }
+                                                if (confirm(confirmMsg)) {
                                                     fetch(`/api/marketing/campaigns/${campaign.id}`, { method: 'DELETE' })
                                                         .then(res => {
                                                             if (res.ok) onRefresh();
