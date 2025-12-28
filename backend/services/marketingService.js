@@ -381,8 +381,9 @@ class MarketingService {
 
                 console.log(`[Marketing] Sending to ${cleanPhone}: "${textToSend.substring(0, 20)}..."`);
 
-                // Add jitter/delay to avoid being robotic (1s - 5s)
-                await new Promise(r => setTimeout(r, 1000 + Math.random() * 4000));
+                // Add jitter/delay to avoid being robotic (0.5s - 1.5s)
+                // Faster for serverless, but still safeish
+                await new Promise(r => setTimeout(r, 500 + Math.random() * 1000));
 
                 await this.aiService.sendMessage(jid, textToSend);
 

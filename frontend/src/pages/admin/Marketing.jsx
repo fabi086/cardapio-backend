@@ -34,7 +34,16 @@ const Marketing = () => {
 
     useEffect(() => {
         fetchData();
-    }, []);
+
+        // Client-side Cron: Poll processing endpoint every 15s to keep serverless lambda alive/processing
+        const cronInterval = setInterval(() => {
+            fetch('/api/marketing/cron').catch(console.error);
+            // Also refresh data to show progress
+            if (activeTab === 'campaigns') fetchData();
+        }, 15000);
+
+        return () => clearInterval(cronInterval);
+    }, [activeTab]);
 
     return (
         <div className="p-6 max-w-7xl mx-auto space-y-6">
