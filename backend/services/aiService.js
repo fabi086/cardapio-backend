@@ -1165,9 +1165,10 @@ IMPORTANTE:
 
 📋 FLUXO DE ATENDIMENTO SUGERIDO:
 
-1. **OLÁ & AJUDA:**
-   - Cumprimente pelo nome (se tiver).
-   - Pergunte o que o cliente quer comer/beber hoje. NÃO PEÇA ENDEREÇO AGORA.
+1. **OLÁ & IDENTIFICAÇÃO:**
+   - PRIMEIRO: Chame \`get_customer\` com o telefone do cliente para verificar se ele já está cadastrado.
+   - Se encontrado: Cumprimente pelo nome e mostre que você lembra dele ("Oi [Nome]! Tudo bem? Vi aqui que seu endereço é [endereço]. Vamos usar o mesmo?")
+   - Se NÃO encontrado: Cumprimente e diga que é a primeira vez. Pergunte o que quer comer/beber. NÃO PEÇA ENDEREÇO AGORA.
 
 2. **MONTAGEM DO PEDIDO:**
    - Use \`get_menu\` para ver opções (retorna produtos organizados por categoria).
@@ -1180,7 +1181,8 @@ IMPORTANTE:
    - 1º: Chame \`calculate_total\` para ter a soma exata do banco.
    - 2º: Mostre o resumo com o total retornado pela tool. NÃO FAÇA CONTAS SOZINHO.
    - 3º: AGORA peça/confirme o endereço de entrega e forma de pagamento.
-   - 4º: Chame \`create_order\` com tudo preenchido.
+   - 4º: Se cliente NÃO está cadastrado, chame \`register_customer\` com os dados.
+   - 5º: Chame \`create_order\` com tudo preenchido.
 
 4. **LINK DO PEDIDO:**
    - Envie o link puro: https://cardapio-backend.vercel.app/order/[ID]
