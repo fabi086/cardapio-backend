@@ -236,8 +236,7 @@ class AIService {
                         productsByCategory[cat.name] = categoryProducts.map(p => ({
                             id: p.id,
                             name: p.name,
-                            price: parseFloat(p.price).toFixed(2),
-                            description: p.description || ''
+                            price: parseFloat(p.price).toFixed(2)
                         }));
                     }
                 });
@@ -246,7 +245,7 @@ class AIService {
                     type: 'full_menu',
                     categories: productsByCategory,
                     totalProducts: products.length,
-                    instruction: 'Format this menu by categories using emojis and line breaks for readability. Show category name in bold, then list products with name and price. NEVER mention products not in this list.'
+                    instruction: 'Mostre o cardápio de forma LIMPA e LEGÍVEL para WhatsApp. Use este formato EXATO:\n\n🍕 *CATEGORIA*\n\n• Nome do Produto - R$ XX,XX\n• Outro Produto - R$ XX,XX\n\n(linha em branco entre categorias)\n\nAPENAS nome e preço. SEM descrições. Use quebras de linha duplas entre categorias.'
                 });
             }
 
@@ -254,15 +253,14 @@ class AIService {
             const formattedProducts = products.map(p => ({
                 id: p.id,
                 name: p.name,
-                price: parseFloat(p.price).toFixed(2),
-                description: p.description || ''
+                price: parseFloat(p.price).toFixed(2)
             }));
 
             return JSON.stringify({
                 type: 'category_menu',
                 products: formattedProducts,
                 count: formattedProducts.length,
-                instruction: 'Show these products in a clean list format. NEVER add products not in this list.'
+                instruction: 'Mostre apenas NOME e PREÇO. Formato: • Nome - R$ XX,XX (uma linha por produto). SEM descrições.'
             });
         } catch (err) {
             logToFile(`Unexpected Error: ${err.message}`);
@@ -1142,14 +1140,21 @@ ${this.settings.system_prompt || 'Você é um atendente virtual simpático e pre
 2. **USE A CALCULADORA:** Antes de mostrar qualquer total para o cliente, OBRIGATORIAMENTE chame a função \`calculate_total\` com os itens do pedido. Use o valor que ela retornar.
 3. **ENDEREÇO NO FINAL:** Não peça o endereço no início. Deixe para pedir/confirmar APENAS quando o cliente disser que quer fechar o pedido.
 4. **CONSULTE O CARDÁPIO:** SEMPRE use \`get_menu\` antes de falar sobre produtos. NUNCA invente produtos, preços ou acompanhamentos.
-5. **CARDÁPIO FORMATADO:** Quando mostrar o cardápio, organize por categorias com emojis e quebras de linha. Exemplo:
-   
-   🍕 *PIZZAS*
-   • Pizza Margherita - R$ 45,00
-   • Pizza Calabresa - R$ 48,00
-   
-   🥤 *BEBIDAS*
-   • Coca-Cola 2L - R$ 10,00
+5. **CARDÁPIO LIMPO E LEGÍVEL:** Quando mostrar o cardápio, use este formato EXATO:
+
+🍕 *PIZZAS*
+
+• Pizza Margherita - R$ 45,00
+• Pizza Calabresa - R$ 48,00
+
+🥤 *BEBIDAS*
+
+• Coca-Cola 2L - R$ 10,00
+
+IMPORTANTE: 
+- APENAS nome e preço (SEM descrições)
+- Linha em branco entre categorias
+- Máximo 6 produtos por categoria (se tiver mais, diga "e mais opções...")
    
 6. **NUNCA OFEREÇA O QUE NÃO EXISTE:** Se um produto não está na lista retornada por \`get_menu\`, NÃO mencione. Se o cliente pedir algo que não existe, diga educadamente que não tem e sugira alternativas DO CARDÁPIO.
 
