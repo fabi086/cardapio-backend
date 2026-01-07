@@ -262,12 +262,17 @@ class MarketingService {
 
         try {
             // 1. Find campaigns due
-            const now = new Date().toISOString();
+            // Get current time in Brazil timezone (UTC-3)
+            const now = new Date();
+            const brazilOffset = -3 * 60; // Brazil is UTC-3
+            const localTime = new Date(now.getTime() + (brazilOffset * 60 * 1000));
+            const localTimeString = localTime.toISOString().slice(0, 16); // Format: "2026-01-07T14:00"
+
             const { data: campaigns } = await this.supabase
                 .from('campaigns')
                 .select('*')
                 .eq('status', 'scheduled')
-                .lte('scheduled_at', now);
+                .lte('scheduled_at', localTimeString);
 
             if (campaigns && campaigns.length > 0) {
                 console.log(`[Marketing] Found ${campaigns.length} campaigns to process.`);

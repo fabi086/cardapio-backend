@@ -35,7 +35,9 @@ const CampaignForm = ({ groups, onCancel, onSuccess, initialData }) => {
         try {
             const payload = {
                 ...formData,
-                scheduledAt: formData.scheduledAt ? new Date(formData.scheduledAt).toISOString() : new Date().toISOString()
+                // Keep local timezone - datetime-local input already provides correct local time
+                // Don't convert to ISO/UTC as it would shift the time by timezone offset
+                scheduledAt: formData.scheduledAt || new Date().toISOString()
             };
 
             const url = initialData ? `/api/marketing/campaigns/${initialData.id}` : '/api/marketing/campaigns';
