@@ -171,7 +171,7 @@ const CartModal = () => {
 
                     {/* Footer */}
                     {cartItems.length > 0 && (
-                        <div className="p-5 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/50 space-y-4">
+                        <div className="p-5 pb-24 md:pb-5 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/50 space-y-4">
 
                             {/* Coupon Section */}
                             <div className="bg-white dark:bg-stone-800 p-4 rounded-xl border border-stone-200 dark:border-stone-700">
