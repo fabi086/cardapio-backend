@@ -111,20 +111,35 @@ class AIService {
     async getCustomerByPhone(phone) {
         try {
             const formattedPhone = this.formatPhone(phone);
+            console.log(`[getCustomerByPhone] Looking up customer with phone: ${formattedPhone}`);
 
-            // Buscar cliente
-            const { data: customer, error } = await supabase
+            // Buscar cliente - use limit(1) instead of single() to avoid errors
+            const { data: customers, error } = await supabase
                 .from('customers')
                 .select('*')
                 .eq('phone', formattedPhone)
-                .single();
+                .limit(1);
 
-            if (error || !customer) {
+            if (error) {
+                console.error('[getCustomerByPhone] Database error:', error);
+                this.logToDb('error', 'Customer Lookup Failed', { phone: formattedPhone, error: error.message });
                 return JSON.stringify({
                     found: false,
                     message: 'Cliente não encontrado. Precisamos fazer um cadastro rápido!'
                 });
             }
+
+            const customer = customers && customers.length > 0 ? customers[0] : null;
+
+            if (!customer) {
+                console.log(`[getCustomerByPhone] Customer not found for phone: ${formattedPhone}`);
+                return JSON.stringify({
+                    found: false,
+                    message: 'Cliente não encontrado. Precisamos fazer um cadastro rápido!'
+                });
+            }
+
+            console.log(`[getCustomerByPhone] Customer found: ${customer.name} (ID: ${customer.id})`);
 
             // Buscar endereços do cliente
             const { data: addresses } = await supabase
@@ -134,13 +149,14 @@ class AIService {
                 .order('is_default', { ascending: false });
 
             // Buscar último pedido
-            const { data: lastOrder } = await supabase
+            const { data: orders } = await supabase
                 .from('orders')
                 .select('id, order_number, total, status, created_at, customer_address')
                 .eq('customer_phone', formattedPhone)
                 .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
+                .limit(1);
+
+            const lastOrder = orders && orders.length > 0 ? orders[0] : null;
 
             return JSON.stringify({
                 found: true,
@@ -152,7 +168,7 @@ class AIService {
                 number: customer.number,
                 neighborhood: customer.neighborhood,
                 city: customer.city,
-                addresses: addresses || [], // Retorna a lista de endereços
+                addresses: addresses || [],
                 lastOrder: lastOrder ? {
                     orderNumber: lastOrder.order_number,
                     total: lastOrder.total,
@@ -162,8 +178,12 @@ class AIService {
                 message: `Cliente encontrado: ${customer.name}`
             });
         } catch (error) {
-            console.error('Erro ao buscar cliente:', error.message);
-            return JSON.stringify({ error: 'Erro ao buscar cliente' });
+            console.error('[getCustomerByPhone] Unexpected error:', error.message);
+            this.logToDb('error', 'Customer Lookup Exception', { error: error.message, stack: error.stack });
+            return JSON.stringify({
+                found: false,
+                message: 'Cliente não encontrado. Precisamos fazer um cadastro rápido!'
+            });
         }
     }
 
@@ -1165,10 +1185,10 @@ IMPORTANTE:
 
 📋 FLUXO DE ATENDIMENTO SUGERIDO:
 
-1. **OLÁ & IDENTIFICAÇÃO:**
-   - PRIMEIRO: Chame \`get_customer\` com o telefone do cliente para verificar se ele já está cadastrado.
-   - Se encontrado: Cumprimente pelo nome e mostre que você lembra dele ("Oi [Nome]! Tudo bem? Vi aqui que seu endereço é [endereço]. Vamos usar o mesmo?")
-   - Se NÃO encontrado: Cumprimente e diga que é a primeira vez. Pergunte o que quer comer/beber. NÃO PEÇA ENDEREÇO AGORA.
+1. **OLÁ & IDENTIFICAÇÃO (OBRIGATÓRIO):**
+   - **PRIMEIRA AÇÃO SEMPRE**: Chame \`get_customer\` com o telefone do cliente ANTES de qualquer outra coisa.
+   - Se encontrado: Cumprimente pelo nome e confirme o endereço salvo ("Oi [Nome]! Vi que seu endereço é [rua], [número]. Vamos usar o mesmo?")
+   - Se NÃO encontrado: Cumprimente e pergunte o que quer comer/beber. NÃO PEÇA ENDEREÇO AGORA.
 
 2. **MONTAGEM DO PEDIDO:**
    - Use \`get_menu\` para ver opções (retorna produtos organizados por categoria).
@@ -1181,7 +1201,15 @@ IMPORTANTE:
    - 1º: Chame \`calculate_total\` para ter a soma exata do banco.
    - 2º: Mostre o resumo com o total retornado pela tool. NÃO FAÇA CONTAS SOZINHO.
    - 3º: AGORA peça/confirme o endereço de entrega e forma de pagamento.
-   - 4º: Se cliente NÃO está cadastrado, chame \`register_customer\` com os dados.
+   - 4º: Se cliente NÃO está cadastrado, chame \`register_customer\` com TODOS os dados:
+        **OBRIGATÓRIO PEDIR:**
+        - Nome completo
+        - CEP (para calcular frete)
+        - Rua/Avenida
+        - **NÚMERO DA CASA** (NUNCA pule isso!)
+        - Bairro
+        - Cidade
+        - Complemento (opcional: "Apto 45", "Casa 2", etc)
    - 5º: Chame \`create_order\` com tudo preenchido.
 
 4. **LINK DO PEDIDO:**

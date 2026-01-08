@@ -365,7 +365,7 @@ _Pedido enviado via Cardápio Digital_`;
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+                <form onSubmit={handleSubmit} className="p-6 pb-32 md:pb-6 space-y-4 overflow-y-auto">
 
                     {tableNumber && (
                         <div className="bg-italian-green/10 border border-italian-green text-italian-green p-3 rounded-xl flex items-center gap-3 mb-4">
