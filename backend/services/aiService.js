@@ -361,12 +361,14 @@ class AIService {
         const formattedPhone = this.formatPhone(phone);
         log(`Formatted phone: ${formattedPhone}`);
 
-        // Buscar cliente existente
-        const { data: existing } = await supabase
+        // Buscar cliente existente - use limit(1) instead of single()
+        const { data: existingCustomers } = await supabase
             .from('customers')
             .select('*')
             .eq('phone', formattedPhone)
-            .single();
+            .limit(1);
+
+        const existing = existingCustomers && existingCustomers.length > 0 ? existingCustomers[0] : null;
 
         if (existing) {
             // Cliente existe - atualizar se novos dados fornecidos
